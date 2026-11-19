@@ -1,0 +1,1051 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>E-Commerce Store Research Tool</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+/* Layout: Sticky sidebar nav + main content column, stacked on mobile */
+:root {
+  --bg:         #ffffff;
+  --surface:    #f4f6f9;
+  --surface-2:  #eaecf1;
+  --border:     #dde1ea;
+  --fg:         #111827;
+  --fg-2:       #374151;
+  --muted:      #6b7280;
+  --accent:     #0284c7;
+  --accent-soft:#e0f2fe;
+  --accent-alt: #d97706;
+  --accent-alt-soft: #fef3c7;
+  --success:    #059669;
+  --success-soft:#d1fae5;
+  --tag-bg:     #f0f4ff;
+  --tag-fg:     #3b4fd8;
+  --code-bg:    #1e2433;
+  --code-fg:    #e2e8f0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:         #0f1117;
+    --surface:    #181c27;
+    --surface-2:  #222736;
+    --border:     #2d3348;
+    --fg:         #f1f5f9;
+    --fg-2:       #cbd5e1;
+    --muted:      #94a3b8;
+    --accent:     #38bdf8;
+    --accent-soft:#0c2a3e;
+    --accent-alt: #fbbf24;
+    --accent-alt-soft: #2d2008;
+    --success:    #34d399;
+    --success-soft:#052e1c;
+    --tag-bg:     #1a2040;
+    --tag-fg:     #818cf8;
+    --code-bg:    #0d1117;
+    --code-fg:    #e2e8f0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:         #0f1117;
+  --surface:    #181c27;
+  --surface-2:  #222736;
+  --border:     #2d3348;
+  --fg:         #f1f5f9;
+  --fg-2:       #cbd5e1;
+  --muted:      #94a3b8;
+  --accent:     #38bdf8;
+  --accent-soft:#0c2a3e;
+  --accent-alt: #fbbf24;
+  --accent-alt-soft: #2d2008;
+  --success:    #34d399;
+  --success-soft:#052e1c;
+  --tag-bg:     #1a2040;
+  --tag-fg:     #818cf8;
+  --code-bg:    #0d1117;
+  --code-fg:    #e2e8f0;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  background: var(--bg);
+  color: var(--fg);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+}
+
+/* ─── Layout ─── */
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  gap: 0;
+}
+
+/* ─── Top bar ─── */
+.topbar {
+  grid-column: 1 / -1;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 20px 32px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.topbar-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.topbar-icon svg { color: #fff; }
+.topbar-text h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: var(--fg);
+}
+.topbar-text p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.topbar-tags {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.tag {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.tag-blue  { background: var(--accent-soft); color: var(--accent); }
+.tag-amber { background: var(--accent-alt-soft); color: var(--accent-alt); }
+.tag-green { background: var(--success-soft); color: var(--success); }
+
+/* ─── Sidebar nav ─── */
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  padding: 24px 0;
+  background: var(--surface);
+}
+.sidebar-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 20px 8px;
+}
+.nav-link {
+  display: block;
+  padding: 7px 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  line-height: 1.4;
+}
+.nav-link:hover { color: var(--fg); background: var(--surface-2); }
+.nav-link.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+.nav-num {
+  display: inline-block;
+  width: 18px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+/* ─── Main ─── */
+.main {
+  min-width: 0;
+  padding: 36px 40px 60px;
+}
+
+/* ─── Summary cards ─── */
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 36px;
+}
+.sum-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+.sum-card-num {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.sum-card-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sum-card-desc {
+  font-size: 0.8rem;
+  color: var(--fg-2);
+  margin-top: 6px;
+}
+
+/* ─── Sections ─── */
+.section {
+  scroll-margin-top: 24px;
+  margin-bottom: 44px;
+}
+.section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.section-num {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.section-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--fg);
+  margin: 0;
+  text-wrap: balance;
+}
+
+/* ─── Tables ─── */
+.table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); margin-top: 2px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+thead th {
+  background: var(--surface);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tbody tr { border-bottom: 1px solid var(--border); }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--surface); }
+td {
+  padding: 10px 14px;
+  vertical-align: top;
+  color: var(--fg-2);
+  line-height: 1.5;
+}
+td:first-child {
+  font-weight: 600;
+  color: var(--fg);
+  white-space: nowrap;
+}
+td .chip {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.chip-free { background: var(--success-soft); color: var(--success); }
+.chip-new  { background: var(--accent-soft);  color: var(--accent);  }
+
+/* Stack highlight rows */
+tr.row-highlight td { background: var(--accent-soft); }
+tr.row-highlight td:first-child { color: var(--accent); }
+
+/* ─── Code block (folder structure) ─── */
+.code-block {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+  font-size: 0.8rem;
+  line-height: 1.7;
+  padding: 20px 24px;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+.code-block .dir  { color: #93c5fd; }
+.code-block .file { color: #d1d5db; }
+.code-block .tree { color: #4b5563; }
+.code-block .cmt  { color: #6b7280; font-style: italic; }
+
+/* ─── Info callout ─── */
+.callout {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 0 8px 8px 0;
+  padding: 12px 16px;
+  font-size: 0.84rem;
+  color: var(--fg-2);
+  margin: 16px 0;
+}
+.callout strong { color: var(--accent); }
+
+.callout-amber {
+  border-left-color: var(--accent-alt);
+  background: var(--accent-alt-soft);
+}
+.callout-amber strong { color: var(--accent-alt); }
+
+/* ─── Week timeline ─── */
+.week-row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.week-label {
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent);
+  padding: 14px 10px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  line-height: 1.3;
+}
+.week-content {
+  padding: 14px 18px;
+  font-size: 0.84rem;
+  color: var(--fg-2);
+}
+.week-content strong { color: var(--fg); display: block; margin-bottom: 4px; }
+.week-items {
+  margin: 4px 0 0;
+  padding-left: 16px;
+}
+.week-items li { margin-bottom: 2px; }
+
+/* ─── Deliverables ─── */
+.deliverable-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+.del-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 0.84rem;
+  color: var(--fg-2);
+}
+.del-item svg { flex-shrink: 0; color: var(--success); margin-top: 1px; }
+
+/* ─── Limitations list ─── */
+.limit-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.limit-list li {
+  display: flex;
+  gap: 10px;
+  font-size: 0.84rem;
+  color: var(--fg-2);
+  line-height: 1.5;
+}
+.limit-list li::before {
+  content: "—";
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 720px) {
+  .page { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .main { padding: 24px 0 48px; }
+  .topbar { padding: 16px 0; }
+  .summary-row { grid-template-columns: 1fr 1fr; }
+  .deliverable-list { grid-template-columns: 1fr; }
+  .week-row { grid-template-columns: 70px 1fr; }
+  .topbar-tags { margin-left: 0; }
+}
+@media (max-width: 480px) {
+  .summary-row { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+<style>
+.main ol { padding-left: 22px; color: var(--fg-2); }
+.main ol li { margin: 7px 0; }
+.main h3 { color: var(--fg); }
+</style>
+
+<div class="page">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-icon">
+      <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+      </svg>
+    </div>
+    <div class="topbar-text">
+      <h1>E-Commerce Store Research Tool</h1>
+      <p>Revised project plan · implementation roadmap · engineering notes</p>
+    </div>
+    <div class="topbar-tags">
+      <span class="tag tag-green">3-Week MVP Target</span>
+      <span class="tag tag-blue">Cost-conscious Stack</span>
+      <span class="tag tag-amber">FastAPI · Playwright · Groq</span>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" aria-label="Sections">
+    <div class="sidebar-label">Contents</div>
+    <a class="nav-link active" href="#overview"><span class="nav-num">01</span> Overview</a>
+    <a class="nav-link" href="#capabilities"><span class="nav-num">02</span> Capabilities</a>
+    <a class="nav-link" href="#workflow"><span class="nav-num">03</span> Workflow</a>
+    <a class="nav-link" href="#fields"><span class="nav-num">04</span> Field Collection</a>
+    <a class="nav-link" href="#stack"><span class="nav-num">05</span> Tech Stack</a>
+    <a class="nav-link" href="#architecture"><span class="nav-num">06</span> Architecture</a>
+    <a class="nav-link" href="#folders"><span class="nav-num">07</span> Folder Structure</a>
+    <a class="nav-link" href="#plan"><span class="nav-num">08</span> 3-Week Plan</a>
+    <a class="nav-link" href="#deliverables"><span class="nav-num">09</span> Deliverables</a>
+    <a class="nav-link" href="#deployment"><span class="nav-num">10</span> Deployment</a>
+    <a class="nav-link" href="#limits"><span class="nav-num">11</span> Limitations</a>
+    <a class="nav-link" href="#milestone"><span class="nav-num">12</span> First Milestone</a>
+    <a class="nav-link" href="#advice"><span class="nav-num">13</span> Engineering Notes &amp; Advice</a>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- SUMMARY CARDS -->
+    <div class="summary-row">
+      <div class="sum-card">
+        <div class="sum-card-num">3</div>
+        <div class="sum-card-label">Week Delivery</div>
+        <div class="sum-card-desc">MVP target; scope depends on access, hosting and test results</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-card-num">20–40</div>
+        <div class="sum-card-label">Minutes / Store</div>
+        <div class="sum-card-desc">Minutes spent manually today; measure actual automated runtime during testing</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-card-num">Low</div>
+        <div class="sum-card-label">Operating Cost</div>
+        <div class="sum-card-desc">Use free tiers for the prototype; verify quotas and production costs before handoff</div>
+      </div>
+    </div>
+
+    <!-- 1. OVERVIEW -->
+    <section class="section" id="overview">
+      <div class="section-header">
+        <span class="section-num">01</span>
+        <h2 class="section-title">Project Overview</h2>
+      </div>
+      <p style="color:var(--fg-2);font-size:0.9rem;margin-top:0;">
+        An automated research tool that accepts an online store name or URL, identifies the correct website, crawls public pages, detects e-commerce and marketing technologies, and produces a structured store profile ready for sales outreach.
+      </p>
+      <div class="callout">
+        <strong>Core objective:</strong> One store URL → verified public-page research → evidence-backed store profile → explainable fit score and marketing-gap note → JSON / Excel / PDF report. Target a usable MVP in 3 weeks, then extend only after validation.
+      </div>
+      <p style="color:var(--fg-2);font-size:0.84rem;">
+        The problem: manual research currently takes 20–40 minutes per store, produces inconsistent records, and limits the number of stores that can be assessed. This tool eliminates that bottleneck entirely.
+      </p>
+    </section>
+
+    <!-- 2. CAPABILITIES -->
+    <section class="section" id="capabilities">
+      <div class="section-header">
+        <span class="section-num">02</span>
+        <h2 class="section-title">Expected Capabilities</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Capability</th><th>What the tool does</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Store identification &amp; verification</td><td>Accept a store name or URL, identify the likely website and flag uncertain matches</td></tr>
+            <tr><td>E-commerce platform detection</td><td>Identify Shopify, WooCommerce, Magento or others from public HTML fingerprints</td></tr>
+            <tr><td>Marketing technology detection</td><td>Detect email/SMS tools, review apps and other key marketing technologies</td></tr>
+            <tr><td>Store basics</td><td>Category, country, product count, price range, signup popup, discount offer, SMS opt-in</td></tr>
+            <tr><td>Social &amp; contact research</td><td>Public social profiles, follower counts where accessible, contact email and key contact name</td></tr>
+            <tr><td>AI-assisted interpretation</td><td>Summarise validated findings and draft a concise marketing-gap note; AI must not invent or silently fill missing fields</td></tr>
+            <tr><td>Fit score</td><td>Rule-based, explainable score with configurable, company-approved weights and a confidence / evidence indicator</td></tr>
+            <tr><td>Report export</td><td>JSON record · Excel spreadsheet · PDF report (professional, company-ready)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 3. WORKFLOW -->
+    <section class="section" id="workflow">
+      <div class="section-header">
+        <span class="section-num">03</span>
+        <h2 class="section-title">End-to-End Workflow</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Stage</th><th>Process</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1 · User input</td><td>User enters a store name or URL in the web UI</td></tr>
+            <tr><td>2 · Lookup &amp; verify</td><td>FastAPI backend checks site reachability; flags uncertain matches via fuzzy name comparison</td></tr>
+            <tr><td>3 · Controlled page crawl</td><td>Playwright visits a small, defined set of public pages (home, selected product/collection, About, Contact); enforce timeouts, page limits and crawl delays</td></tr>
+            <tr><td>4 · Structured extraction</td><td>Prefer JSON-LD / schema.org data where available, then platform-aware selectors, then conservative HTML fallbacks</td></tr>
+            <tr><td>5 · Tech detection</td><td>Deterministic fingerprint rules inspect scripts, asset paths and HTML clues; record evidence and confidence rather than treating one script as proof</td></tr>
+            <tr><td>6 · Dynamic checks</td><td>Playwright performs bounded popup/form checks; record the wait duration and pages tested, and distinguish not observed from absent</td></tr>
+            <tr><td>7 · Validation &amp; consolidation</td><td>Deduplicate results, normalise currencies/URLs, attach source URL and timestamp, and assign Found / Not found / Unavailable / Unverified / Blocked</td></tr>
+            <tr><td>8 · AI interpretation</td><td>Send only validated, minimised evidence to Groq; request a summary and gap note, not factual extraction or unsupported completion</td></tr>
+            <tr><td>9 · Fit score</td><td><code>scoring.py</code> applies company-approved rules; missing or blocked evidence must not automatically count as a negative signal</td></tr>
+            <tr><td>10 · Report generation</td><td>Generate JSON + Excel + PDF from the same validated record; include run timestamp, evidence and limitations</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 4. FIELD COLLECTION -->
+    <section class="section" id="fields">
+      <div class="section-header">
+        <span class="section-num">04</span>
+        <h2 class="section-title">How Each Information Field Is Collected</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Information</th><th>Collection approach</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Products &amp; prices</td><td>Visit product/collection pages; extract titles, displayed prices and product URLs from HTML or structured data</td></tr>
+            <tr><td>E-commerce platform</td><td>Inspect public HTML, script names, asset paths and page patterns for known platform fingerprints</td></tr>
+            <tr><td>Email / SMS tools</td><td>Look for vendor scripts (Klaviyo, Mailchimp, SMSBump…), resource names and embedded form identifiers</td></tr>
+            <tr><td>Review applications</td><td>Inspect product pages for review widgets (Yotpo, Okendo, Stamped, Judge.me…), app-specific identifiers</td></tr>
+            <tr><td>Signup popups</td><td>Playwright: wait 5 s → scroll → check for modal overlays with <code>input[type="email"]</code> or <code>input[type="tel"]</code></td></tr>
+            <tr><td>Discount offers</td><td>Scan banners, sale pages, price comparison labels and promotional text for discount patterns</td></tr>
+            <tr><td>Social media</td><td>Extract <code>&lt;a href&gt;</code> from header/footer matching known social domains; mark follower counts unavailable where inaccessible</td></tr>
+            <tr><td>Contact details</td><td>Check Contact / About / footer / policy pages for publicly displayed emails, phone numbers and named contacts using regex</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 5. TECH STACK -->
+    <section class="section" id="stack">
+      <div class="section-header">
+        <span class="section-num">05</span>
+        <h2 class="section-title">Technology Stack — Updated (Free &amp; Open Source)</h2>
+      </div>
+      <div class="callout callout-amber">
+        <strong>Implementation guidance:</strong> FastAPI provides the API boundary and automatic docs; Playwright handles JavaScript-rendered pages; BeautifulSoup handles parsing. Groq is optional for narrative generation only. Model names, rate limits, free-tier quotas and hosting terms change—verify them at implementation time and keep the app functional when AI is unavailable.
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Layer</th><th>Tool</th><th>Purpose</th></tr>
+          </thead>
+          <tbody>
+            <tr class="row-highlight">
+              <td>Backend <span class="chip chip-new">Updated</span></td>
+              <td>Python + FastAPI</td>
+              <td>Async REST API, auto Swagger docs, coordinates all modules</td>
+            </tr>
+            <tr>
+              <td>Browser automation</td>
+              <td>Playwright</td>
+              <td>JS-rendered pages, delayed popups, dynamic content</td>
+            </tr>
+            <tr>
+              <td>HTML parsing</td>
+              <td>BeautifulSoup4</td>
+              <td>DOM extraction — products, links, contact details</td>
+            </tr>
+            <tr>
+              <td>Pattern extraction</td>
+              <td>Python regex (re)</td>
+              <td>Email addresses, phone numbers, structured text patterns</td>
+            </tr>
+            <tr>
+              <td>Store lookup</td>
+              <td>duckduckgo-search + rapidfuzz</td>
+              <td>Free name-to-URL resolution; fuzzy mismatch detection</td>
+            </tr>
+            <tr>
+              <td>Tech detection</td>
+              <td>Python dict rules</td>
+              <td>HTML / script fingerprints for 20+ platforms and tools</td>
+            </tr>
+            <tr class="row-highlight">
+              <td>AI layer <span class="chip chip-new">Updated</span></td>
+              <td>Groq API (model selected at implementation)</td>
+              <td>Optional narrative generation from validated evidence; enforce output schema and handle quota / timeout failures</td>
+            </tr>
+            <tr>
+              <td>Spreadsheet export</td>
+              <td>Pandas + OpenPyXL</td>
+              <td>Excel (.xlsx) with formatted rows per store</td>
+            </tr>
+            <tr class="row-highlight">
+              <td>PDF export <span class="chip chip-new">New</span></td>
+              <td>ReportLab</td>
+              <td>Branded, professional PDF report per store (company-ready)</td>
+            </tr>
+            <tr>
+              <td>Frontend</td>
+              <td>HTML + CSS + vanilla JS</td>
+              <td>URL input, live progress, dashboard, report download buttons</td>
+            </tr>
+            <tr>
+              <td>Data format</td>
+              <td>JSON</td>
+              <td>Consistent structured profile for every store</td>
+            </tr>
+            <tr>
+              <td>Version control</td>
+              <td>Git + GitHub</td>
+              <td>Team collaboration; CI/CD via GitHub Actions</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:16px;">
+        <p style="font-family:'Space Grotesk',sans-serif;font-size:0.78rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Groq API Integration (drop-in)</p>
+        <div class="code-block"><span class="cmt"># ai_analyzer.py</span>
+<span class="file">from groq import Groq</span>
+
+<span class="file">client = Groq(api_key=os.getenv("GROQ_API_KEY"))</span>
+
+<span class="file">response = client.chat.completions.create(</span>
+<span class="file">    model=os.getenv("GROQ_MODEL"),</span>  <span class="cmt"># configure a currently supported model</span>
+<span class="file">    messages=[{"role": "user", "content": prompt}],</span>
+<span class="file">    temperature=0.1,</span>
+<span class="file">    max_tokens=800,</span>
+<span class="file">)</span></div>
+      </div>
+    </section>
+
+    <!-- 6. ARCHITECTURE -->
+    <section class="section" id="architecture">
+      <div class="section-header">
+        <span class="section-num">06</span>
+        <h2 class="section-title">Application Architecture</h2>
+      </div>
+      <p style="color:var(--fg-2);font-size:0.84rem;margin-top:0;">Modular design — each file has a single responsibility so team members can build and test parts independently.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Module</th><th>File</th><th>Responsibility</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Frontend</td><td><code>index.html</code> · <code>style.css</code> · <code>script.js</code></td><td>URL input, sends request to FastAPI backend, displays result and report download links</td></tr>
+            <tr><td>Backend entry point</td><td><code>app.py</code></td><td>FastAPI app — receives request, orchestrates all modules, returns JSON response</td></tr>
+            <tr><td>Store lookup</td><td><code>store_lookup.py</code></td><td>Validates input; resolves store name to URL via DuckDuckGo; checks reachability</td></tr>
+            <tr><td>Browser automation</td><td><code>browser.py</code></td><td>Playwright — visits pages, scrolls, waits for popups, captures dynamic content</td></tr>
+            <tr><td>Scraper</td><td><code>scraper.py</code></td><td>BeautifulSoup + regex — extracts products, prices, social links, contact details</td></tr>
+            <tr><td>Tech detector</td><td><code>technology_detector.py</code></td><td>Fingerprint rules for platforms (Shopify/WooCommerce/Magento) and marketing tools</td></tr>
+            <tr><td>Popup detector</td><td><code>popup_detector.py</code></td><td>Checks for email/SMS signup forms, delayed modals, discount offers</td></tr>
+            <tr><td>AI analyser</td><td><code>ai_analyzer.py</code></td><td>Calls Groq API — structures findings into JSON schema, writes marketing-gap note</td></tr>
+            <tr><td>Validation &amp; normalisation</td><td><code>validation.py</code></td><td>Normalises URLs, currencies and fields; deduplicates records; attaches evidence, timestamps and status values</td></tr>
+            <tr><td>Scoring</td><td><code>scoring.py</code></td><td>Calculates fit score using documented, configurable rules and weights</td></tr>
+            <tr><td>Persistence &amp; cache</td><td><code>storage.py</code></td><td>SQLite for the MVP; PostgreSQL if multi-user / production persistence is required; stores profiles and crawl history</td></tr>
+            <tr><td>Report generator</td><td><code>report_generator.py</code></td><td>Produces JSON + Excel (OpenPyXL) + PDF (ReportLab) from the final store record</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 7. FOLDER STRUCTURE -->
+    <section class="section" id="folders">
+      <div class="section-header">
+        <span class="section-num">07</span>
+        <h2 class="section-title">Folder Structure</h2>
+      </div>
+      <div class="code-block">
+<span class="dir">ecommerce-research-tool/</span>
+<span class="tree">├── </span><span class="dir">frontend/</span>
+<span class="tree">│   ├── </span><span class="file">index.html</span>
+<span class="tree">│   ├── </span><span class="file">style.css</span>
+<span class="tree">│   └── </span><span class="file">script.js</span>
+<span class="tree">├── </span><span class="dir">backend/</span>
+<span class="tree">│   ├── </span><span class="file">app.py</span>              <span class="cmt"># FastAPI entry point</span>
+<span class="tree">│   ├── </span><span class="file">store_lookup.py</span>
+<span class="tree">│   ├── </span><span class="file">browser.py</span>          <span class="cmt"># Playwright</span>
+<span class="tree">│   ├── </span><span class="file">scraper.py</span>          <span class="cmt"># BeautifulSoup</span>
+<span class="tree">│   ├── </span><span class="file">technology_detector.py</span>
+<span class="tree">│   ├── </span><span class="file">popup_detector.py</span>
+<span class="tree">│   ├── </span><span class="file">ai_analyzer.py</span>      <span class="cmt"># Groq API</span>
+<span class="tree">│   ├── </span><span class="file">validation.py</span>       <span class="cmt"># normalisation + evidence checks</span>
+<span class="tree">│   ├── </span><span class="file">scoring.py</span>
+<span class="tree">│   ├── </span><span class="file">storage.py</span>          <span class="cmt"># SQLite / PostgreSQL access</span>
+<span class="tree">│   └── </span><span class="file">report_generator.py</span> <span class="cmt"># JSON + Excel + PDF</span>
+<span class="tree">├── </span><span class="dir">output/</span>
+<span class="tree">│   ├── </span><span class="file">store_profiles.json</span>
+<span class="tree">│   └── </span><span class="file">store_profiles.xlsx</span>
+<span class="tree">├── </span><span class="dir">tests/</span>                 <span class="cmt"># unit + integration + sample-site tests</span>
+<span class="tree">├── </span><span class="dir">docs/</span>                  <span class="cmt"># schema, scoring rules, user guide</span>
+<span class="tree">├── </span><span class="file">.env</span>                     <span class="cmt"># GROQ_API_KEY stored here</span>
+<span class="tree">├── </span><span class="file">requirements.txt</span>
+<span class="tree">└── </span><span class="file">README.md</span>
+      </div>
+    </section>
+
+    <!-- 8. 3-WEEK PLAN -->
+    <section class="section" id="plan">
+      <div class="section-header">
+        <span class="section-num">08</span>
+        <h2 class="section-title">3-Week Implementation Plan — Revised</h2>
+      </div>
+      <div class="callout">
+        <strong>Delivery principle:</strong> Build a narrow, reliable MVP first. Do not attempt every field, every platform and perfect automation in the first week. The three weeks are a target, not a guarantee; confirm scope and available development time with the company.
+      </div>
+      <div class="week-row">
+        <div class="week-label">Week 1</div>
+        <div class="week-content">
+          <strong>Foundation + reliable scrape-to-JSON pipeline</strong>
+          <ul class="week-items">
+            <li>Confirm required fields, sample stores, allowed sources, output schema and acceptance criteria with the company.</li>
+            <li>Create FastAPI project, GitHub repository, environment configuration, logging and basic tests.</li>
+            <li>Implement URL validation, reachability checks, redirect handling and safe store URL verification.</li>
+            <li>Build a bounded Playwright crawler and extraction for homepage, selected product pages and social/contact links.</li>
+            <li>Prefer JSON-LD / schema.org, then platform-aware selectors, then HTML fallbacks; store source URL and timestamp for each finding.</li>
+            <li><strong>Week 1 exit test:</strong> one approved store URL produces a validated JSON record; failures return clear statuses, not crashes.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="week-row">
+        <div class="week-label">Week 2</div>
+        <div class="week-content">
+          <strong>Technology detection + validation + scoring + reports</strong>
+          <ul class="week-items">
+            <li>Add deterministic platform and marketing-technology fingerprints with evidence and confidence levels.</li>
+            <li>Add bounded popup / email / SMS form checks; record which pages were checked and what was observable.</li>
+            <li>Implement field normalisation, deduplication, explicit statuses and persistence (SQLite for the MVP).</li>
+            <li>Agree fit-score criteria and weights with the company; implement an explainable score and score breakdown.</li>
+            <li>Add Groq only for a concise gap narrative based on validated evidence; validate its output and provide a no-AI fallback.</li>
+            <li>Generate JSON, Excel and PDF from one canonical profile; add a simple frontend for input, progress, results and downloads.</li>
+            <li><strong>Week 2 exit test:</strong> a small test set completes end-to-end and the same source data appears consistently in all exports.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="week-row">
+        <div class="week-label">Week 3</div>
+        <div class="week-content">
+          <strong>Quality assurance + deployment + handoff</strong>
+          <ul class="week-items">
+            <li>Build a representative test set: accessible stores, redirects, non-store domains, slow sites, missing fields and blocked sites.</li>
+            <li>Manually verify a sample (target 15–20 stores) and report field-level verified / incorrect / unavailable counts.</li>
+            <li>Fix high-impact issues; measure crawl duration, memory use, failure rate and AI quota usage.</li>
+            <li>Deploy only after checking Playwright browser dependencies, memory limits, timeouts, concurrency and persistent-storage requirements.</li>
+            <li>Prepare README, setup instructions, environment-variable list, user guide, known limitations and company handoff.</li>
+            <li><strong>Week 3 exit test:</strong> company can run a test, understand evidence and statuses, export reports and reproduce the setup.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout callout-amber" style="margin-top:16px;">
+        <strong>Scope control:</strong> 50-store testing is a stretch target, not a core acceptance condition. First prove quality on a smaller, representative sample. Add bulk processing only after single-store reliability, rate limiting and resource usage are measured.
+      </div>
+    </section>
+
+    <!-- 9. DELIVERABLES -->
+    <section class="section" id="deliverables">
+      <div class="section-header">
+        <span class="section-num">09</span>
+        <h2 class="section-title">Final Deliverables</h2>
+      </div>
+      <div class="deliverable-list">
+        <div class="del-item">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Working web app with live hosted URL the company can open from any device
+        </div>
+        <div class="del-item">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Validated profiles for an agreed representative test set (target 20–50 stores if time and site access permit), in JSON + Excel + PDF
+        </div>
+        <div class="del-item">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Field-level quality report against a manually verified sample, including unavailable / blocked cases
+        </div>
+        <div class="del-item">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Short user guide — how to run the tool, interpret the fit score, read reports
+        </div>
+        <div class="del-item">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          GitHub repo with clean code, documented modules and requirements.txt
+        </div>
+        <div class="del-item">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Documented fit-score formula — weights defined and validated with team
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. DEPLOYMENT -->
+    <section class="section" id="deployment">
+      <div class="section-header">
+        <span class="section-num">10</span>
+        <h2 class="section-title">Deployment — Free Hosting</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Need</th><th>Tool</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Backend hosting</td>
+              <td>Render or company-approved host</td>
+              <td>Prototype option only. Verify current plan limits, sleep behaviour, build support and persistent storage. Benchmark Playwright memory / CPU before choosing it for a company demo.</td>
+            </tr>
+            <tr>
+              <td>Frontend hosting</td>
+              <td>Netlify or company-approved host</td>
+              <td>Suitable for a static frontend; confirm current plan limits and configure backend API URL and CORS allow-list.</td>
+            </tr>
+            <tr>
+              <td>AI inference</td>
+              <td>Groq API (optional)</td>
+              <td>Check current model availability, rate limits, token limits and data-handling terms. Cache results and handle 429 / timeout responses.</td>
+            </tr>
+            <tr>
+              <td>CI / CD</td>
+              <td>GitHub Actions</td>
+              <td>Run tests and linting on pull requests; confirm repository visibility and current usage limits.</td>
+            </tr>
+            <tr>
+              <td>Secrets management</td>
+              <td><code>.env</code> + python-dotenv</td>
+              <td>GROQ_API_KEY stored in Render env vars — never committed to GitHub.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout" style="margin-top:16px;">
+        <strong>Alternative (self-hosted):</strong> If the company requires control over data or predictable runtime, provide Docker-based deployment instructions. Confirm who maintains the host, secrets, logs, backups and updates.
+      </div>
+    </section>
+
+    <!-- 11. LIMITATIONS -->
+    <section class="section" id="limits">
+      <div class="section-header">
+        <span class="section-num">11</span>
+        <h2 class="section-title">Data Quality, Limitations &amp; Responsible Use</h2>
+      </div>
+      <ul class="limit-list">
+        <li>Use only publicly accessible information and respect robots.txt, access restrictions and applicable law.</li>
+        <li>Use a responsible crawl pace; skip sites that actively block automation as required by the brief.</li>
+        <li>A detected script or integration is evidence a technology <em>may</em> be present — it does not prove the store uses every feature.</li>
+        <li>Dynamic content, geolocation, consent banners, login requirements and anti-bot protections affect what is visible to the scraper.</li>
+        <li>Follower counts and named contacts may not be publicly accessible; mark these fields Unavailable rather than guessing.</li>
+        <li>Never invent missing values. Use explicit statuses: Found · Not found · Unavailable · Unverified · Blocked.</li>
+        <li>Keep a record of the source page and timestamp for key findings so the team can verify results.</li>
+        <li>The fit-score formula must be documented and approved by the team before the final report — the brief does not prescribe weights.</li>
+        <li>AI provider quotas and model names change. Check current provider documentation; implement retries with backoff, caching and a graceful fallback.</li>
+        <li>Protect against SSRF: block localhost, private / link-local IP ranges and non-HTTP schemes; validate DNS and redirect destinations.</li>
+        <li>Set per-page and per-store timeouts, maximum pages, response-size limits and low concurrency. Always close browser contexts.</li>
+        <li>Minimise personal data collection; define retention, access control, deletion and log-redaction rules with the company.</li>
+        <li>Do not promise a fixed runtime or zero operating cost until measured on the chosen host and representative stores.</li>
+        <li>Persist crawl history and cache results to avoid repeatedly visiting the same store; provide a manual refresh option and show when data was last checked.</li>
+      </ul>
+    </section>
+
+    <!-- 12. MILESTONE -->
+    <section class="section" id="milestone">
+      <div class="section-header">
+        <span class="section-num">12</span>
+        <h2 class="section-title">First Milestone &amp; Team Confirmations</h2>
+      </div>
+      <div class="callout">
+        <strong>Build this first (Day 1–3):</strong> Enter one store URL → verify site is reachable → collect a few public product names, prices and social links → save results as JSON. Once this works reliably, layer in tech detection, popup checks, Groq AI structuring, scoring and report export.
+      </div>
+      <p style="font-family:'Space Grotesk',sans-serif;font-size:0.78rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;margin-top:20px;">Confirm with team / company before building</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Question</th><th>Why it matters</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>AI provider and data policy approved?</td><td>Confirm whether store-page content may be sent to an external AI provider, which model is approved, and what quotas / costs apply.</td></tr>
+            <tr><td>Fit-score criteria and weights?</td><td>Must be defined and validated with team during Week 2 before final reports are generated.</td></tr>
+            <tr><td>Exact JSON schema / field list?</td><td>Agree required fields, data types, status values, evidence format and sample output before implementation.</td></tr>
+            <tr><td>Hosted URL or self-hosted?</td><td>Decides whether to deploy to Render/Netlify or ship a docker-compose.yml for the company's own machine.</td></tr>
+            <tr><td>Permitted sources and crawl policy?</td><td>Agree domains, public-only boundaries, robots / terms requirements, request rate and whether social follower counts are in scope.</td></tr>
+            <tr><td>Who owns hosting and data?</td><td>Confirm deployment account, database, backups, retention, access roles, monitoring and handover owner.</td></tr>
+            <tr><td>What counts as acceptable accuracy?</td><td>Define critical fields and minimum acceptable verification rate; not all fields are observable on every site.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 13. ENGINEERING NOTES & ADVICE -->
+    <section class="section" id="advice">
+      <div class="section-header">
+        <span class="section-num">13</span>
+        <h2 class="section-title">Engineering Notes, Advice &amp; Things to Take Care Of</h2>
+      </div>
+      <div class="callout">
+        <strong>Most important recommendation:</strong> Treat this as an evidence-collection and lead-research system, not simply a web scraper with an AI prompt. Reliability, traceability and honest handling of missing data matter more than the number of fields the first version claims to collect.
+      </div>
+
+      <h3 style="font-family:'Space Grotesk',sans-serif;font-size:0.95rem;margin:22px 0 8px;">A. Build in this order</h3>
+      <ol>
+        <li><strong>Input safety and URL verification:</strong> accept only HTTP / HTTPS, normalise domains, handle redirects and reject private or local network destinations.</li>
+        <li><strong>One-store vertical slice:</strong> crawl a small page set and produce a stable JSON record before adding AI, scoring or a polished dashboard.</li>
+        <li><strong>Evidence-backed extraction:</strong> every important field should retain its source URL, extraction time, status and (where practical) a short evidence snippet.</li>
+        <li><strong>Deterministic rules:</strong> use code for extraction, technology fingerprints, normalisation and scoring. AI should explain evidence, not determine facts.</li>
+        <li><strong>Exports and UI:</strong> build these from one canonical validated profile so JSON, Excel and PDF never disagree.</li>
+        <li><strong>Bulk processing last:</strong> add queues / batches only after a single-store run is reliable and resource limits are measured.</li>
+      </ol>
+
+      <h3 style="font-family:'Space Grotesk',sans-serif;font-size:0.95rem;margin:22px 0 8px;">B. Data quality rules</h3>
+      <ul class="limit-list">
+        <li>Use a consistent field structure: <code>value</code>, <code>status</code>, <code>source_url</code>, <code>checked_at</code> and optional <code>confidence</code>.</li>
+        <li>Keep <strong>Not found</strong> separate from <strong>Unavailable</strong>, <strong>Blocked</strong> and <strong>Not checked</strong>. A missing observation is not proof that a feature does not exist.</li>
+        <li>For technology detection, store the matched fingerprint (script URL, DOM marker or asset path) and confidence. Avoid binary claims from one weak signal.</li>
+        <li>For product prices, preserve displayed value and currency. Do not compare prices across currencies without conversion rules and a recorded exchange-rate source.</li>
+        <li>Deduplicate products by canonical product URL or stable platform ID; normalise tracking URLs carefully.</li>
+        <li>Keep raw evidence separate from AI-generated commentary. Label generated text as interpretation, not verified fact.</li>
+      </ul>
+
+      <h3 style="font-family:'Space Grotesk',sans-serif;font-size:0.95rem;margin:22px 0 8px;">C. Fit-score design</h3>
+      <ul class="limit-list">
+        <li>Get the company to approve criteria and weights before coding the final score. Any sample weights are proposals, not business truth.</li>
+        <li>Make the score explainable: show each factor, its contribution, the evidence used and the reason a factor was excluded.</li>
+        <li>Do not treat inaccessible or blocked data as zero. Use an explicit unknown state and calculate coverage / confidence separately.</li>
+        <li>Test the score against examples the company considers good-fit and poor-fit stores; adjust only with documented approval.</li>
+        <li>Keep scoring deterministic and version the formula so historical scores remain interpretable after rule changes.</li>
+      </ul>
+
+      <h3 style="font-family:'Space Grotesk',sans-serif;font-size:0.95rem;margin:22px 0 8px;">D. Browser, performance and reliability</h3>
+      <ul class="limit-list">
+        <li>Reuse a browser process where appropriate, but isolate each crawl in its own context and always close pages, contexts and browser processes in cleanup blocks.</li>
+        <li>Use navigation and selector timeouts; avoid long fixed sleeps where a specific element can be checked safely.</li>
+        <li>Limit pages per store, response size, concurrency and total crawl duration. Add retries only for transient failures, with backoff.</li>
+        <li>Do not repeatedly retry 403 / 429 / CAPTCHA / access-denied responses. Stop or mark the site Blocked.</li>
+        <li>Test Playwright on the actual deployment host early. Browser binaries, system dependencies and memory can make a free web tier unsuitable.</li>
+        <li>Measure runtime, success rate, memory, CPU and cost. Do not claim a fixed per-store time until benchmarked.</li>
+      </ul>
+
+      <h3 style="font-family:'Space Grotesk',sans-serif;font-size:0.95rem;margin:22px 0 8px;">E. Security and privacy checklist</h3>
+      <ul class="limit-list">
+        <li>Protect against SSRF: reject localhost, private, link-local and reserved IP ranges; validate DNS results and every redirect destination.</li>
+        <li>Never execute downloaded scripts or treat scraped page text as trusted instructions. Treat website content as untrusted input.</li>
+        <li>Keep API keys in environment variables / deployment secrets; commit only a <code>.env.example</code>, never the real <code>.env</code>.</li>
+        <li>Restrict CORS to the deployed frontend, validate request sizes and input types, and add basic API rate limiting.</li>
+        <li>Minimise personal data collection; agree retention and deletion rules. Avoid collecting personal contact names unless explicitly required and approved.</li>
+        <li>Do not bypass logins, paywalls, CAPTCHAs, access controls or anti-bot measures. Respect site terms, applicable law and the company's approved crawl policy.</li>
+      </ul>
+
+      <h3 style="font-family:'Space Grotesk',sans-serif;font-size:0.95rem;margin:22px 0 8px;">F. Testing checklist before handoff</h3>
+      <ul class="limit-list">
+        <li>Test valid store URL, ambiguous store-name matches, non-store website, invalid URL and unreachable domain.</li>
+        <li>Test redirects, slow pages, JavaScript-heavy pages, empty product catalogues, currency variants and duplicate products.</li>
+        <li>Test missing email / social links, cookie banners, popup timing, blocked pages and partial crawl failures.</li>
+        <li>Test Groq unavailable, quota exceeded, malformed AI output and slow AI response; scraper and exports should still work.</li>
+        <li>Test Excel / PDF output for empty values, long text, special characters, multiple stores and large result sets.</li>
+        <li>Verify every score and factual statement in the report can be traced to stored evidence or a labelled interpretation.</li>
+      </ul>
+
+      <h3 style="font-family:'Space Grotesk',sans-serif;font-size:0.95rem;margin:22px 0 8px;">G. Practical project-management advice</h3>
+      <ul class="limit-list">
+        <li>Maintain a task board with owner, status, blocker and acceptance test for each module. Agree interfaces before parallel development.</li>
+        <li>Use feature branches and pull requests; require a basic test before merging to the main branch.</li>
+        <li>Freeze the JSON schema and scoring rules early. Changes after frontend and export work begins create avoidable rework.</li>
+        <li>Keep a known-sites test fixture set so every scraper change can be checked against previously verified results.</li>
+        <li>Reserve the final 2–3 days for bug fixes, deployment and handoff—not new features.</li>
+        <li>Document what the tool cannot reliably detect. A transparent limitation is better than a misleading result.</li>
+      </ul>
+
+      <div class="callout callout-amber" style="margin-top:18px;">
+        <strong>Do not overbuild the first version:</strong> defer login, user roles, sophisticated dashboards, continuous monitoring, social follower-count collection, large-scale parallel crawling and advanced AI agents unless the company explicitly requires them. Prioritise a dependable single-store workflow and an auditable report.
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// Sidebar active link tracking
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('.section');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { threshold: 0.25, rootMargin: '-10% 0px -70% 0px' });
+
+sections.forEach(s => observer.observe(s));
+</script>
+
+</body></html>
