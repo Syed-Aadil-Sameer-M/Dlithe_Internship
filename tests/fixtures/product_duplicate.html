@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Featured Products | Urban Soles</title>
+    <!-- Block 1: Declaration of Urban Canvas Sneaker -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": "Urban Canvas Low-Tops",
+        "url": "https://urbansoles.example.com/shoes/canvas-low-top",
+        "offers": {
+            "@type": "Offer",
+            "price": "55.00",
+            "priceCurrency": "USD"
+        }
+    }
+    </script>
+    <!-- Block 2: Duplicate JSON-LD of the exact same product -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": "Urban Canvas Low-Tops",
+        "url": "https://urbansoles.example.com/shoes/canvas-low-top",
+        "offers": {
+            "@type": "Offer",
+            "price": "55.00",
+            "priceCurrency": "USD"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div class="hero-featured">
+        <!-- Instance 1 of product card -->
+        <div class="product-card">
+            <a class="product-title" href="/shoes/canvas-low-top">Urban Canvas Low-Tops</a>
+            <span class="price">$55.00</span>
+        </div>
+    </div>
+    <div class="main-collection">
+        <!-- Instance 2 of exact same product card -->
+        <div class="product-card">
+            <a class="product-title" href="/shoes/canvas-low-top">Urban Canvas Low-Tops</a>
+            <span class="price">$55.00</span>
+        </div>
+    </div>
+</body>
+</html>

@@ -318,11 +318,41 @@ class DOMProductExtractor:
                 source_url=source_url,
                 observed_at=observed_at,
                 page_currency=page_currency,
+                page_type=page_type,
             )
             if single_product:
                 products.append(single_product)
 
-        return products
+        return self._deduplicate_products(products)
+
+    def _deduplicate_products(
+        self,
+        products: list[ExtractedProduct],
+    ) -> list[ExtractedProduct]:
+        """Deduplicate products with identical URL/title identity while preserving order."""
+        seen_keys: set[tuple[str, ...]] = set()
+        deduped: list[ExtractedProduct] = []
+        for p in products:
+            key = self._get_product_identity_key(p)
+            if key is None or key not in seen_keys:
+                if key is not None:
+                    seen_keys.add(key)
+                deduped.append(p)
+        return deduped
+
+    def _get_product_identity_key(self, p: ExtractedProduct) -> tuple[str, ...] | None:
+        url = str(p.get("product.url") or "").strip()
+        title = str(p.get("product.title") or "").strip()
+        price = str(p.get("product.price") or "").strip()
+        if url and title:
+            return ("url_title", url, title)
+        if url:
+            return ("url", url)
+        if title and price:
+            return ("title_price", title, price)
+        if title:
+            return ("title", title)
+        return None
 
     def extract_from_crawl_record(
         self,
@@ -728,8 +758,19 @@ class DOMProductExtractor:
         source_url: str,
         observed_at: datetime,
         page_currency: str | None = None,
+        page_type: str | None = None,
     ) -> ExtractedProduct | None:
         """Extract a single product from product detail page elements when no cards exist."""
+        has_explicit_product_container = bool(
+            soup.find(attrs={"class": lambda c: c and any(k in c.lower() for k in ("product-single", "product-detail", "product-main"))})
+            or soup.find(attrs={"itemtype": lambda t: t and "schema.org/product" in t.lower()})
+        )
+
+        is_product_route = bool(
+            (page_type and page_type.lower() in ("product", "product_detail"))
+            or (source_url and any(p in source_url.lower() for p in ("/product/", "/products/", "/item/", "/items/", "/p/")))
+        )
+
         # Find product container
         container = (
             soup.find(attrs={"class": lambda c: c and any(k in c.lower() for k in ("product-single", "product-detail", "product-main"))})
@@ -745,7 +786,12 @@ class DOMProductExtractor:
         price_text = self._extract_card_price_text(container)
         price, curr, curr_stat = normalize_price_and_currency(price_text, page_currency)
 
-        if not (title or price is not None):
+        # Conservative gating: must have a price, OR an explicit product container/route with a title
+        if price is not None:
+            pass
+        elif title and (has_explicit_product_container or is_product_route):
+            pass
+        else:
             return None
 
         records: dict[str, EvidenceRecord] = {}

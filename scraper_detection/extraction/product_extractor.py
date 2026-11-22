@@ -120,7 +120,36 @@ class JSONLDProductExtractor:
                     if product:
                         extracted_products.append(product)
 
-        return extracted_products
+        return self._deduplicate_products(extracted_products)
+
+    def _deduplicate_products(
+        self,
+        products: list[ExtractedProduct],
+    ) -> list[ExtractedProduct]:
+        """Deduplicate products with identical URL/title identity while preserving order."""
+        seen_keys: set[tuple[str, ...]] = set()
+        deduped: list[ExtractedProduct] = []
+        for p in products:
+            key = self._get_product_identity_key(p)
+            if key is None or key not in seen_keys:
+                if key is not None:
+                    seen_keys.add(key)
+                deduped.append(p)
+        return deduped
+
+    def _get_product_identity_key(self, p: ExtractedProduct) -> tuple[str, ...] | None:
+        url = str(p.get("product.url") or "").strip()
+        title = str(p.get("product.title") or "").strip()
+        price = str(p.get("product.price") or "").strip()
+        if url and title:
+            return ("url_title", url, title)
+        if url:
+            return ("url", url)
+        if title and price:
+            return ("title_price", title, price)
+        if title:
+            return ("title", title)
+        return None
 
     def _collect_entities(self, data: Any) -> list[dict[str, Any]]:
         """Flatten objects, lists, and @graph hierarchies into a list of entity dictionaries."""
