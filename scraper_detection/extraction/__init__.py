@@ -4,10 +4,22 @@ from scraper_detection.extraction.product_extractor import (
     SUPPORTED_PRODUCT_FIELDS,
     extract_products_json_ld,
 )
+from scraper_detection.extraction.dom_product_extractor import (
+    CrawlRecordInput,
+    DOMProductExtractor,
+    extract_products_dom,
+    normalize_price_and_currency,
+    normalize_whitespace,
+)
 
 __all__ = [
     "ExtractedProduct",
     "JSONLDProductExtractor",
+    "DOMProductExtractor",
+    "CrawlRecordInput",
     "SUPPORTED_PRODUCT_FIELDS",
     "extract_products_json_ld",
+    "extract_products_dom",
+    "normalize_price_and_currency",
+    "normalize_whitespace",
 ]
