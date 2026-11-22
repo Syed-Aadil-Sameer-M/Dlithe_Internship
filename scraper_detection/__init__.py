@@ -34,6 +34,11 @@ from scraper_detection.extraction.store_extractor import (
     StoreExtractor,
     extract_store_details,
 )
+from scraper_detection.pipeline import (
+    D3ExtractionPipeline,
+    StoreExtractionResult,
+    extract_store_data,
+)
 from scraper_detection.schemas.evidence import (
     EvidenceMethod,
     EvidenceRecord,
@@ -70,4 +75,7 @@ __all__ = [
     "PLATFORM_SHOPIFY",
     "PLATFORM_WOOCOMMERCE",
     "PLATFORM_MAGENTO",
+    "D3ExtractionPipeline",
+    "StoreExtractionResult",
+    "extract_store_data",
 ]

@@ -10,7 +10,8 @@ import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Iterator
+from enum import Enum
+from typing import Any, Iterator, Sequence
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
@@ -121,6 +122,82 @@ class JSONLDProductExtractor:
                         extracted_products.append(product)
 
         return self._deduplicate_products(extracted_products)
+
+    def extract_from_crawl_record(
+        self,
+        record: Any,
+        allowed_page_types: Sequence[Any] | None = None,
+    ) -> list[ExtractedProduct]:
+        """Extract products from a D2 CrawlRecord or dict.
+
+        Inspects access_state, source_url/canonical_url, rendered_html,
+        and fetch_timestamp without importing Playwright or browser classes.
+        """
+        # 1. Check accessibility
+        access_state = getattr(record, "access_state", None)
+        if access_state is None and isinstance(record, dict):
+            access_state = record.get("access_state")
+
+        access_state_str = (
+            access_state.value
+            if isinstance(access_state, Enum)
+            else str(access_state or "Accessible")
+        )
+
+        # Inaccessible / Blocked / Unavailable records are not processed for products
+        if access_state_str.strip().lower() != "accessible":
+            return []
+
+        # 2. Check page_type routing if restricted
+        page_type = getattr(record, "page_type", None)
+        if page_type is None and isinstance(record, dict):
+            page_type = record.get("page_type")
+
+        page_type_str = (
+            page_type.value
+            if isinstance(page_type, Enum)
+            else str(page_type or "")
+        )
+
+        if allowed_page_types is not None:
+            allowed_set = {
+                t.value.lower() if isinstance(t, Enum) else str(t).lower()
+                for t in allowed_page_types
+            }
+            if page_type_str.lower() not in allowed_set:
+                return []
+
+        # 3. Extract source URL and HTML
+        source_url = (
+            getattr(record, "source_url", "")
+            or getattr(record, "canonical_url", "")
+        )
+        if not source_url and isinstance(record, dict):
+            source_url = record.get("source_url") or record.get("canonical_url", "")
+
+        html = getattr(record, "rendered_html", "")
+        if not html and isinstance(record, dict):
+            html = record.get("rendered_html", "")
+
+        # 4. Extract timestamp if present
+        fetch_ts = getattr(record, "fetch_timestamp", None)
+        if fetch_ts is None and isinstance(record, dict):
+            fetch_ts = record.get("fetch_timestamp")
+
+        observed_at: datetime | None = None
+        if isinstance(fetch_ts, str) and fetch_ts:
+            try:
+                observed_at = datetime.fromisoformat(fetch_ts.replace("Z", "+00:00"))
+            except ValueError:
+                observed_at = None
+        elif isinstance(fetch_ts, datetime):
+            observed_at = fetch_ts
+
+        return self.extract_from_html(
+            html=html,
+            source_url=source_url,
+            observed_at=observed_at,
+        )
 
     def _deduplicate_products(
         self,
@@ -297,7 +374,7 @@ class JSONLDProductExtractor:
             if val is not None:
                 status = EvidenceStatus.FOUND
             else:
-                status = EvidenceStatus.NOT_FOUND
+                status = EvidenceStatus.NOT_OBSERVED
 
             records[field_name] = EvidenceRecord(
                 field=field_name,
@@ -455,3 +532,13 @@ def extract_products_json_ld(
     """Convenience helper function to extract products from JSON-LD in HTML."""
     extractor = JSONLDProductExtractor()
     return extractor.extract_from_html(html, source_url=source_url, observed_at=observed_at)
+
+
+def extract_products_json_ld_record(
+    record: Any,
+    allowed_page_types: Sequence[Any] | None = None,
+    confidence: float = 1.0,
+) -> list[ExtractedProduct]:
+    """Convenience helper function to extract products from JSON-LD in a CrawlRecord."""
+    extractor = JSONLDProductExtractor(confidence=confidence)
+    return extractor.extract_from_crawl_record(record, allowed_page_types=allowed_page_types)

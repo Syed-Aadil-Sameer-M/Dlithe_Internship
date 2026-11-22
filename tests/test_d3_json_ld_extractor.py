@@ -71,7 +71,7 @@ def test_normal_product_json_ld():
     # Price and currency should be NOT_FOUND without fabrication
     price_rec = p.get_record("product.price")
     assert price_rec is not None
-    assert price_rec.status == EvidenceStatus.NOT_FOUND
+    assert price_rec.status == EvidenceStatus.NOT_OBSERVED
     assert price_rec.value is None
 
 
@@ -332,7 +332,7 @@ def test_missing_price():
 
     assert p.get("product.title") == "Custom Handmade Mug"
     price_rec = p.get_record("product.price")
-    assert price_rec.status == EvidenceStatus.NOT_FOUND
+    assert price_rec.status == EvidenceStatus.NOT_OBSERVED
     assert price_rec.value is None
 
 
@@ -362,7 +362,7 @@ def test_missing_currency():
     assert price_rec.value == 5.0
 
     curr_rec = p.get_record("product.currency")
-    assert curr_rec.status == EvidenceStatus.NOT_FOUND
+    assert curr_rec.status == EvidenceStatus.NOT_OBSERVED
     assert curr_rec.value is None
 
 

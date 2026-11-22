@@ -160,7 +160,7 @@ def test_no_platform_ordinary_html():
 
     assert ev.field == "technology.ecommerce_platform"
     assert ev.value is None
-    assert ev.status == EvidenceStatus.NOT_FOUND
+    assert ev.status == EvidenceStatus.NOT_OBSERVED
     assert ev.confidence == 1.0
     assert res.matched_indicators == []
 

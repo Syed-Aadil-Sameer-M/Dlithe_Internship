@@ -336,7 +336,7 @@ class PlatformDetector:
             empty_evidence = EvidenceRecord(
                 field="technology.ecommerce_platform",
                 value=None,
-                status=EvidenceStatus.NOT_FOUND,
+                status=EvidenceStatus.NOT_OBSERVED,
                 source_url=source_url,
                 observed_at=observed_at,
                 method=EvidenceMethod.DOM,
@@ -438,13 +438,46 @@ class PlatformDetector:
         all_matched_indicators: list[FingerprintIndicator] = []
         best_source_url = ""
         earliest_time = datetime.now(timezone.utc)
+        all_blocked = True
+        record_count = 0
 
         for rec in records:
+            record_count += 1
+            access_state = getattr(rec, "access_state", None)
+            if access_state is None and isinstance(rec, dict):
+                access_state = rec.get("access_state")
+            access_state_str = (
+                access_state.value
+                if isinstance(access_state, Enum)
+                else str(access_state or "Accessible")
+            )
+            if access_state_str.strip().lower() != "blocked":
+                all_blocked = False
+
             res = self.detect_from_crawl_record(rec)
+            if not best_source_url and res.evidence.source_url:
+                best_source_url = res.evidence.source_url
+
             if res.matched_indicators:
-                if not best_source_url:
-                    best_source_url = res.evidence.source_url
                 all_matched_indicators.extend(res.matched_indicators)
+
+        # If all records were blocked and no indicators were found
+        if record_count > 0 and all_blocked and not all_matched_indicators:
+            blocked_evidence = EvidenceRecord(
+                field="technology.ecommerce_platform",
+                value=None,
+                status=EvidenceStatus.BLOCKED,
+                source_url=best_source_url,
+                observed_at=earliest_time,
+                method=EvidenceMethod.DOM,
+                confidence=1.0,
+            )
+            return PlatformDetectionResult(
+                evidence=blocked_evidence,
+                platform=None,
+                matched_indicators=[],
+                confidence_breakdown={"platform_scores": {}},
+            )
 
         # Deduplicate indicators by (platform, indicator_name, matched_value)
         seen_keys: set[tuple[str, str, str]] = set()
@@ -460,6 +493,15 @@ class PlatformDetector:
             source_url=best_source_url,
             observed_at=earliest_time,
         )
+
+    def detect_from_crawl_bundle(self, crawl_bundle: Any) -> PlatformDetectionResult:
+        """Detect platform from a CrawlBundle or record collection."""
+        records = getattr(crawl_bundle, "records", None)
+        if records is None and isinstance(crawl_bundle, dict):
+            records = crawl_bundle.get("records")
+        if records is None and isinstance(crawl_bundle, (list, tuple)):
+            records = crawl_bundle
+        return self.detect_from_crawl_records(records or [])
 
     def _collect_matched_indicators(
         self,
@@ -670,7 +712,7 @@ class PlatformDetector:
             evidence = EvidenceRecord(
                 field="technology.ecommerce_platform",
                 value=None,
-                status=EvidenceStatus.NOT_FOUND,
+                status=EvidenceStatus.NOT_OBSERVED,
                 source_url=source_url,
                 observed_at=observed_at,
                 method=EvidenceMethod.DOM,

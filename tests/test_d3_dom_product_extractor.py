@@ -237,12 +237,12 @@ def test_missing_price():
 
     price_rec = p.get_record("product.price")
     assert price_rec is not None
-    assert price_rec.status == EvidenceStatus.NOT_FOUND
+    assert price_rec.status == EvidenceStatus.NOT_OBSERVED
     assert price_rec.value is None
 
     curr_rec = p.get_record("product.currency")
     assert curr_rec is not None
-    assert curr_rec.status == EvidenceStatus.NOT_FOUND
+    assert curr_rec.status == EvidenceStatus.NOT_OBSERVED
     assert curr_rec.value is None
 
 
@@ -259,7 +259,7 @@ def test_missing_title():
 
     title_rec = p.get_record("product.title")
     assert title_rec is not None
-    assert title_rec.status == EvidenceStatus.NOT_FOUND
+    assert title_rec.status == EvidenceStatus.NOT_OBSERVED
     assert title_rec.value is None
 
     assert p.get("product.price") == 15.0
@@ -282,7 +282,7 @@ def test_missing_url():
 
     url_rec = p.get_record("product.url")
     assert url_rec is not None
-    assert url_rec.status == EvidenceStatus.NOT_FOUND
+    assert url_rec.status == EvidenceStatus.NOT_OBSERVED
     assert url_rec.value is None
 
 

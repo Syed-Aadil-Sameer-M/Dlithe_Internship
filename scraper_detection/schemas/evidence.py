@@ -6,10 +6,14 @@ from typing import Any
 
 class EvidenceStatus(str, Enum):
     FOUND = "Found"
-    NOT_FOUND = "Not found"
+    NOT_OBSERVED = "Not observed"
     UNAVAILABLE = "Unavailable"
     UNVERIFIED = "Unverified"
     BLOCKED = "Blocked"
+    ERROR = "Error"
+
+    # Deprecated alias pointing to canonical "Not observed"
+    NOT_FOUND = "Not observed"
 
 
 class EvidenceMethod(str, Enum):
@@ -70,7 +74,7 @@ sample_product_currency = EvidenceRecord(
 sample_product_missing = EvidenceRecord(
     field="product.description",
     value=None,
-    status=EvidenceStatus.NOT_FOUND,
+    status=EvidenceStatus.NOT_OBSERVED,
     source_url="https://example.com/product/example-product",
     observed_at=datetime.now(),
     method=EvidenceMethod.DOM,

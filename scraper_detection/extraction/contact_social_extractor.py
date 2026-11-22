@@ -159,7 +159,7 @@ class ContactSocialExtractor:
         records["contact.email"] = EvidenceRecord(
             field="contact.email",
             value=email,
-            status=EvidenceStatus.FOUND if email else EvidenceStatus.NOT_FOUND,
+            status=EvidenceStatus.FOUND if email else EvidenceStatus.NOT_OBSERVED,
             source_url=source_url,
             observed_at=observed_at,
             method=email_method if email else EvidenceMethod.REGEX,
@@ -170,7 +170,7 @@ class ContactSocialExtractor:
         records["contact.phone"] = EvidenceRecord(
             field="contact.phone",
             value=phone,
-            status=EvidenceStatus.FOUND if phone else EvidenceStatus.NOT_FOUND,
+            status=EvidenceStatus.FOUND if phone else EvidenceStatus.NOT_OBSERVED,
             source_url=source_url,
             observed_at=observed_at,
             method=phone_method if phone else EvidenceMethod.REGEX,
@@ -184,7 +184,7 @@ class ContactSocialExtractor:
             records[field_name] = EvidenceRecord(
                 field=field_name,
                 value=url_val,
-                status=EvidenceStatus.FOUND if url_val else EvidenceStatus.NOT_FOUND,
+                status=EvidenceStatus.FOUND if url_val else EvidenceStatus.NOT_OBSERVED,
                 source_url=source_url,
                 observed_at=observed_at,
                 method=EvidenceMethod.DOM if url_val else EvidenceMethod.URL,
@@ -260,12 +260,15 @@ class ContactSocialExtractor:
         """Aggregate contact details and social links across multiple crawled pages."""
         combined_records: dict[str, EvidenceRecord] = {}
         now = datetime.now(timezone.utc)
+        all_blocked = True
+        record_count = 0
+        first_source_url = ""
 
         for fld in SUPPORTED_CONTACT_FIELDS:
             combined_records[fld] = EvidenceRecord(
                 field=fld,
                 value=None,
-                status=EvidenceStatus.NOT_FOUND,
+                status=EvidenceStatus.NOT_OBSERVED,
                 source_url="",
                 observed_at=now,
                 method=EvidenceMethod.DOM,
@@ -273,11 +276,45 @@ class ContactSocialExtractor:
             )
 
         for rec in records:
+            record_count += 1
+            access_state = getattr(rec, "access_state", None)
+            if access_state is None and isinstance(rec, dict):
+                access_state = rec.get("access_state")
+            access_state_str = (
+                access_state.value
+                if isinstance(access_state, Enum)
+                else str(access_state or "Accessible")
+            )
+            if access_state_str.strip().lower() != "blocked":
+                all_blocked = False
+
+            src = getattr(rec, "source_url", "") or getattr(rec, "canonical_url", "")
+            if not src and isinstance(rec, dict):
+                src = rec.get("source_url") or rec.get("canonical_url", "")
+            if not first_source_url and src:
+                first_source_url = src
+
             extracted = self.extract_from_crawl_record(rec)
             for fld in SUPPORTED_CONTACT_FIELDS:
                 # Update if current aggregated field is not found and page has evidence
                 if combined_records[fld].value is None and extracted.is_found(fld):
                     combined_records[fld] = extracted[fld]
+
+        if record_count > 0 and all_blocked:
+            for fld in SUPPORTED_CONTACT_FIELDS:
+                combined_records[fld] = EvidenceRecord(
+                    field=fld,
+                    value=None,
+                    status=EvidenceStatus.BLOCKED,
+                    source_url=first_source_url,
+                    observed_at=now,
+                    method=EvidenceMethod.DOM,
+                    confidence=self.confidence,
+                )
+        elif first_source_url:
+            for fld in SUPPORTED_CONTACT_FIELDS:
+                if not combined_records[fld].source_url:
+                    combined_records[fld].source_url = first_source_url
 
         return ExtractedContactSocial(records=combined_records)
 
@@ -611,7 +648,7 @@ class ContactSocialExtractor:
             records[fld] = EvidenceRecord(
                 field=fld,
                 value=None,
-                status=EvidenceStatus.NOT_FOUND,
+                status=EvidenceStatus.NOT_OBSERVED,
                 source_url=source_url,
                 observed_at=observed_at,
                 method=EvidenceMethod.DOM,

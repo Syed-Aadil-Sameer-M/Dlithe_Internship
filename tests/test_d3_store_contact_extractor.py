@@ -341,11 +341,11 @@ def test_missing_contact_information():
     res = extract_contact_and_social(html, source_url="https://example.com")
 
     email_rec = res.get_record("contact.email")
-    assert email_rec.status == EvidenceStatus.NOT_FOUND
+    assert email_rec.status == EvidenceStatus.NOT_OBSERVED
     assert email_rec.value is None
 
     phone_rec = res.get_record("contact.phone")
-    assert phone_rec.status == EvidenceStatus.NOT_FOUND
+    assert phone_rec.status == EvidenceStatus.NOT_OBSERVED
     assert phone_rec.value is None
 
 
@@ -362,7 +362,7 @@ def test_page_with_no_social_links():
     res = extract_contact_and_social(html, source_url="https://example.com")
     for platform in ("instagram", "facebook", "youtube", "twitter", "linkedin"):
         rec = res.get_record(f"social.{platform}")
-        assert rec.status == EvidenceStatus.NOT_FOUND
+        assert rec.status == EvidenceStatus.NOT_OBSERVED
         assert rec.value is None
 
 

@@ -182,13 +182,13 @@ def normalize_price_and_currency(
         tuple of (numeric_price, currency_code_or_notation, currency_evidence_status)
     """
     if not price_text or not price_text.strip():
-        return None, None, EvidenceStatus.NOT_FOUND
+        return None, None, EvidenceStatus.NOT_OBSERVED
 
     clean_text = normalize_whitespace(price_text)
 
     # Detect currency symbols or tokens in the text
     detected_currency: str | None = None
-    currency_status = EvidenceStatus.NOT_FOUND
+    currency_status = EvidenceStatus.NOT_OBSERVED
 
     # 1. Match symbol or explicit currency token
     token_pattern = (
@@ -681,7 +681,7 @@ class DOMProductExtractor:
         disc_price: float | None = None
         current_price: float | None = None
         currency_val: str | None = None
-        currency_status = EvidenceStatus.NOT_FOUND
+        currency_status = EvidenceStatus.NOT_OBSERVED
 
         # Check for strikethrough/old/was price elements
         del_el = card.find(["del", "s", "strike"]) or card.select_one(
@@ -738,7 +738,7 @@ class DOMProductExtractor:
             if field_name == "product.currency":
                 status = currency_status
             else:
-                status = EvidenceStatus.FOUND if val is not None else EvidenceStatus.NOT_FOUND
+                status = EvidenceStatus.FOUND if val is not None else EvidenceStatus.NOT_OBSERVED
 
             records[field_name] = EvidenceRecord(
                 field=field_name,
@@ -773,15 +773,15 @@ class DOMProductExtractor:
 
         # Find product container
         container = (
-            soup.find(attrs={"class": lambda c: c and any(k in c.lower() for k in ("product-single", "product-detail", "product-main"))})
-            or soup.find("main")
+            soup.find("main")
+            or soup.find(attrs={"class": lambda c: c and any(k in c.lower() for k in ("product-single", "product-main", "product-info-main", "type-product"))})
             or soup.find("body")
         )
         if not container or not isinstance(container, Tag):
             return None
 
-        title_el = container.find("h1") or container.select_one('[class*="product-title"], [itemprop="name"]')
-        title = normalize_whitespace(title_el.get_text()) if title_el else None
+        title_el = container.select_one('[class*="product_title"], [class*="product-title"], [itemprop="name"]') or container.find("h1")
+        title = self._clean_title_element_text(title_el) if title_el else None
 
         price_text = self._extract_card_price_text(container)
         price, curr, curr_stat = normalize_price_and_currency(price_text, page_currency)
@@ -811,7 +811,7 @@ class DOMProductExtractor:
             if field_name == "product.currency":
                 status = curr_stat
             else:
-                status = EvidenceStatus.FOUND if val is not None else EvidenceStatus.NOT_FOUND
+                status = EvidenceStatus.FOUND if val is not None else EvidenceStatus.NOT_OBSERVED
 
             records[field_name] = EvidenceRecord(
                 field=field_name,

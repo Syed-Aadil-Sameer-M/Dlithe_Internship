@@ -116,7 +116,7 @@ class StoreExtractor:
             records["store.name"] = EvidenceRecord(
                 field="store.name",
                 value=None,
-                status=EvidenceStatus.NOT_FOUND,
+                status=EvidenceStatus.NOT_OBSERVED,
                 source_url=source_url,
                 observed_at=observed_at,
                 method=EvidenceMethod.DOM,
@@ -138,7 +138,7 @@ class StoreExtractor:
             records["store.about_text"] = EvidenceRecord(
                 field="store.about_text",
                 value=None,
-                status=EvidenceStatus.NOT_FOUND,
+                status=EvidenceStatus.NOT_OBSERVED,
                 source_url=source_url,
                 observed_at=observed_at,
                 method=EvidenceMethod.DOM,
@@ -222,13 +222,16 @@ class StoreExtractor:
         """Aggregate store details across multiple crawled pages (e.g. CrawlBundle)."""
         combined_records: dict[str, EvidenceRecord] = {}
         now = datetime.now(timezone.utc)
+        all_blocked = True
+        record_count = 0
+        first_source_url = ""
 
         # Initialize defaults
         for fld in SUPPORTED_STORE_FIELDS:
             combined_records[fld] = EvidenceRecord(
                 field=fld,
                 value=None,
-                status=EvidenceStatus.NOT_FOUND,
+                status=EvidenceStatus.NOT_OBSERVED,
                 source_url="",
                 observed_at=now,
                 method=EvidenceMethod.DOM,
@@ -236,6 +239,24 @@ class StoreExtractor:
             )
 
         for rec in records:
+            record_count += 1
+            access_state = getattr(rec, "access_state", None)
+            if access_state is None and isinstance(rec, dict):
+                access_state = rec.get("access_state")
+            access_state_str = (
+                access_state.value
+                if isinstance(access_state, Enum)
+                else str(access_state or "Accessible")
+            )
+            if access_state_str.strip().lower() != "blocked":
+                all_blocked = False
+
+            src = getattr(rec, "source_url", "") or getattr(rec, "canonical_url", "")
+            if not src and isinstance(rec, dict):
+                src = rec.get("source_url") or rec.get("canonical_url", "")
+            if not first_source_url and src:
+                first_source_url = src
+
             extracted = self.extract_from_crawl_record(rec)
             # Update store.name if not found yet or higher confidence
             if extracted.is_found("store.name"):
@@ -246,6 +267,22 @@ class StoreExtractor:
             if extracted.is_found("store.about_text"):
                 if combined_records["store.about_text"].value is None or extracted["store.about_text"].confidence > combined_records["store.about_text"].confidence:
                     combined_records["store.about_text"] = extracted["store.about_text"]
+
+        if record_count > 0 and all_blocked:
+            for fld in SUPPORTED_STORE_FIELDS:
+                combined_records[fld] = EvidenceRecord(
+                    field=fld,
+                    value=None,
+                    status=EvidenceStatus.BLOCKED,
+                    source_url=first_source_url,
+                    observed_at=now,
+                    method=EvidenceMethod.DOM,
+                    confidence=self.confidence,
+                )
+        elif first_source_url:
+            for fld in SUPPORTED_STORE_FIELDS:
+                if not combined_records[fld].source_url:
+                    combined_records[fld].source_url = first_source_url
 
         return ExtractedStoreDetails(records=combined_records)
 
@@ -498,7 +535,7 @@ class StoreExtractor:
             records[fld] = EvidenceRecord(
                 field=fld,
                 value=None,
-                status=EvidenceStatus.NOT_FOUND,
+                status=EvidenceStatus.NOT_OBSERVED,
                 source_url=source_url,
                 observed_at=observed_at,
                 method=EvidenceMethod.DOM,

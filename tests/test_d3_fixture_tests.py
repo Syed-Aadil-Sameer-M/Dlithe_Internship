@@ -119,11 +119,11 @@ def test_fixture_missing_price_json_ld_and_dom():
 
     assert p_json.get("product.title") == "Handmade Walnut Dining Table"
     price_rec_json = p_json.get_record("product.price")
-    assert price_rec_json.status == EvidenceStatus.NOT_FOUND
+    assert price_rec_json.status == EvidenceStatus.NOT_OBSERVED
     assert price_rec_json.value is None
 
     curr_rec_json = p_json.get_record("product.currency")
-    assert curr_rec_json.status == EvidenceStatus.NOT_FOUND
+    assert curr_rec_json.status == EvidenceStatus.NOT_OBSERVED
     assert curr_rec_json.value is None
 
     # In DOM fallback
@@ -133,7 +133,7 @@ def test_fixture_missing_price_json_ld_and_dom():
 
     assert p_dom.get("product.title") == "Handmade Walnut Dining Table"
     price_rec_dom = p_dom.get_record("product.price")
-    assert price_rec_dom.status == EvidenceStatus.NOT_FOUND
+    assert price_rec_dom.status == EvidenceStatus.NOT_OBSERVED
     assert price_rec_dom.value is None
 
 
@@ -256,24 +256,24 @@ def test_fixture_negative_signals_no_fabrication():
     # Store: not an ecommerce store
     store_res = extract_store_details(html, source_url=source_url)
     assert store_res.get("store.about_text") is None
-    assert store_res.get_record("store.about_text").status == EvidenceStatus.NOT_FOUND
+    assert store_res.get_record("store.about_text").status == EvidenceStatus.NOT_OBSERVED
 
     # Contact & Social: none
     cs_res = extract_contact_and_social(html, source_url=source_url)
     assert cs_res.get("contact.email") is None
-    assert cs_res.get_record("contact.email").status == EvidenceStatus.NOT_FOUND
+    assert cs_res.get_record("contact.email").status == EvidenceStatus.NOT_OBSERVED
     assert cs_res.get("contact.phone") is None
-    assert cs_res.get_record("contact.phone").status == EvidenceStatus.NOT_FOUND
+    assert cs_res.get_record("contact.phone").status == EvidenceStatus.NOT_OBSERVED
 
     for platform in ("instagram", "facebook", "youtube", "twitter", "linkedin"):
         rec = cs_res.get_record(f"social.{platform}")
-        assert rec.status == EvidenceStatus.NOT_FOUND
+        assert rec.status == EvidenceStatus.NOT_OBSERVED
         assert rec.value is None
 
     # Platform Detector: not Shopify, WooCommerce, or Magento
     platform_res = detect_ecommerce_platform(html, source_url=source_url)
     assert platform_res.evidence.value is None
-    assert platform_res.evidence.status == EvidenceStatus.NOT_FOUND
+    assert platform_res.evidence.status == EvidenceStatus.NOT_OBSERVED
     assert platform_res.evidence.confidence == 1.0
     assert platform_res.matched_indicators == []
 
