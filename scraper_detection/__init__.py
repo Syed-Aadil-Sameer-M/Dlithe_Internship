@@ -1,3 +1,14 @@
+from scraper_detection.detection.platform_detector import (
+    FingerprintIndicator,
+    PLATFORM_MAGENTO,
+    PLATFORM_RULES,
+    PLATFORM_SHOPIFY,
+    PLATFORM_WOOCOMMERCE,
+    PlatformDetectionResult,
+    PlatformDetector,
+    PlatformFingerprintRule,
+    detect_ecommerce_platform,
+)
 from scraper_detection.extraction.contact_social_extractor import (
     SUPPORTED_CONTACT_FIELDS,
     ContactSocialExtractor,
@@ -50,4 +61,13 @@ __all__ = [
     "ExtractedContactSocial",
     "ContactSocialExtractor",
     "extract_contact_and_social",
+    "PlatformDetector",
+    "detect_ecommerce_platform",
+    "PlatformDetectionResult",
+    "FingerprintIndicator",
+    "PlatformFingerprintRule",
+    "PLATFORM_RULES",
+    "PLATFORM_SHOPIFY",
+    "PLATFORM_WOOCOMMERCE",
+    "PLATFORM_MAGENTO",
 ]
