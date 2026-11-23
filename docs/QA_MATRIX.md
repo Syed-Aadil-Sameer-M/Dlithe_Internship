@@ -1,4 +1,4 @@
-﻿# QA Matrix
+# QA Matrix
 
 ## 1. Purpose
 
@@ -90,3 +90,49 @@ No test should be marked as passed without execution evidence.
 | D4 | Evidence and scoring testing |
 | D5 | Frontend testing |
 | D6 | QA coordination, integration and release verification |
+
+## 8. Test Harness Preparation
+
+### 8.1 Execution Strategy
+- Use pytest for Python module tests where applicable.
+- Use the test commands confirmed by each module owner.
+- Run integration tests after module source code is merged.
+- Record test results and failures with supporting evidence.
+- Do not mark tests as passed without actual execution.
+
+### 8.2 Test Fixture Preparation
+Prepare representative test data for:
+- Shopify stores
+- WooCommerce stores
+- Magento stores
+
+Fixtures should cover successful extraction, missing information, invalid input, and unexpected responses.
+
+## 9. Integration Readiness Checklist
+
+| ID | Integration Requirement | Status |
+|---|---|---|
+| INT-01 | D1 backend source and API contracts available | Pending |
+| INT-02 | D2 CrawlBundle contract available | Pending |
+| INT-03 | D3 EvidenceRecord contract available | Pending |
+| INT-04 | D4 validation and scoring integration available | Pending |
+| INT-05 | D5 frontend integration available | Pending |
+| INT-06 | Health endpoint available | Pending |
+| INT-07 | Shared test fixtures available | Pending |
+| INT-08 | Integrated CI tests executable | Pending |
+
+Update each status only after verification.
+
+## 10. Test Evidence and Reporting
+
+For every executed test, record:
+- Test ID
+- Module or component
+- Execution date
+- Command used
+- Expected result
+- Actual result
+- Pass or fail status
+- Related defect ID, if applicable
+
+Test results must be supported by execution output or CI evidence.
