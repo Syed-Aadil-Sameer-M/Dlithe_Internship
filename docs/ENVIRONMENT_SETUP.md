@@ -39,7 +39,32 @@ Confirmed dependencies:
 - Pygments==2.21.0
 - pytest==9.2.0
 
-## 4. Frontend Environment (Dev5)
+## 4. Scraper Detection Environment (Dev3)
+
+- Python: 3.15.2
+- pytest: 9.2.0
+- BeautifulSoup4: 4.15.0
+
+Verified local dependency snapshot:
+
+- beautifulsoup4==4.15.0
+- colorama==0.4.6
+- iniconfig==2.3.1
+- packaging==26.3
+- pluggy==1.7.0
+- Pygments==2.21.0
+- pytest==9.2.0
+- soupsieve==4.1.3
+- typing_extensions==4.16.0
+
+Pytest configuration:
+- Configuration file: pytest.ini
+- pythonpath = .
+- testpaths = tests
+
+Note: These dependency versions were verified in the D6 local virtual environment. Confirmation from Dev3 is pending.
+
+## 5. Frontend Environment (Dev5)
 
 - Node.js: v24.13.1
 - npm: 11.8.0
@@ -64,7 +89,7 @@ Dependency files:
 - package.json
 - package-lock.json
 
-## 5. Backend Environment (Dev1)
+## 6. Backend Environment (Dev1)
 
 Confirmed:
 - Python: 3.15.2
@@ -78,7 +103,7 @@ Pending confirmation:
 - Supabase configuration
 - Health endpoint status
 
-## 6. Database Architecture
+## 7. Database Architecture
 
 The D6 developer plan specifies Supabase with managed PostgreSQL.
 
@@ -86,14 +111,14 @@ The root README currently mentions SQLite as an MVP proposal.
 
 This architecture difference requires confirmation from Dev1 and the team before implementation.
 
-## 7. Security Notes
+## 8. Security Notes
 
 - Never commit API keys, passwords, tokens or credentials.
 - Store secrets in environment variables or approved CI secrets.
 - Do not include real secret values in this document.
 - Keep the Supabase service role key backend-only.
 
-## 8. Status
+## 9. Status
 
 Environment information is partially collected.
 
