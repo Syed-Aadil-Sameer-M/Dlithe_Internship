@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Spring Collection | Studio Terra</title>
+    <!-- Block 1: Store Organization & WebSite inside @graph -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "WebSite",
+                "name": "Studio Terra",
+                "url": "https://studioterra.example.com"
+            },
+            {
+                "@type": "Product",
+                "name": "Glazed Terracotta Planter",
+                "url": "https://studioterra.example.com/planters/terracotta",
+                "description": "Breathable clay planter for indoor succulents.",
+                "offers": {
+                    "@type": "Offer",
+                    "price": "34.00",
+                    "priceCurrency": "USD"
+                }
+            }
+        ]
+    }
+    </script>
+    <!-- Block 2: Broken JSON that must be safely ignored -->
+    <script type="application/ld+json">
+    {
+        "broken": true,
+        "syntax": incomplete JSON...
+    </script>
+    <!-- Block 3: Second distinct Product -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": "Copper Watering Can",
+        "url": "https://studioterra.example.com/tools/copper-watering-can",
+        "description": "Solid copper long-stem watering can.",
+        "offers": {
+            "@type": "Offer",
+            "price": "62.00",
+            "priceCurrency": "USD",
+            "availability": "https://schema.org/InStock"
+        }
+    }
+    </script>
+</head>
+<body>
+    <h1>Studio Terra Collection</h1>
+</body>
+</html>
