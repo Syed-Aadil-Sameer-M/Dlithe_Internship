@@ -3,6 +3,7 @@
 import asyncio
 from dataclasses import replace
 from datetime import datetime, timezone
+import random
 import time
 from typing import Any
 from urllib.parse import urljoin, urlparse
@@ -30,7 +31,12 @@ from browser_automation.factory import BrowserFactory
 from browser_automation.guard import BaseUrlGuard, FailClosedUrlGuard
 from browser_automation.inspector import inspect_page_dom
 from browser_automation.logging import logger
-from browser_automation.policy import CrawlPolicy, get_origin, normalize_url
+from browser_automation.policy import (
+    CrawlPolicy,
+    get_origin,
+    normalize_url,
+    parse_retry_after,
+)
 from browser_automation.robots import RobotsPolicy
 from browser_automation.config import BrowserContextConfig, BrowserLaunchConfig
 
@@ -39,6 +45,50 @@ ALLOWED_MEDIA_TYPES = {
     "text/html",
     "application/xhtml+xml",
 }
+
+RETRYABLE_HTTP_STATUSES = {408, 429, 500, 502, 503, 504}
+
+
+class _OriginPacer:
+    """Sequential per-origin request pacing and temporary pause state."""
+
+    def __init__(
+        self,
+        interval: float,
+        clock=time.monotonic,
+        sleeper=asyncio.sleep,
+    ):
+        self.interval = interval
+        self._clock = clock
+        self._sleeper = sleeper
+        self._next_request_at: dict[str, float] = {}
+        self._paused_until: dict[str, float] = {}
+        self._locks: dict[str, asyncio.Lock] = {}
+
+    def pause(self, origin: str, delay: float) -> None:
+        paused_until = self._clock() + delay
+        self._paused_until[origin] = max(
+            self._paused_until.get(origin, 0.0), paused_until
+        )
+
+    async def wait(self, origin: str, deadline: float) -> bool:
+        lock = self._locks.setdefault(origin, asyncio.Lock())
+        async with lock:
+            now = self._clock()
+            ready_at = max(
+                self._next_request_at.get(origin, now),
+                self._paused_until.get(origin, now),
+            )
+            delay = max(0.0, ready_at - now)
+            if delay >= deadline - now:
+                return False
+            if delay:
+                await self._sleeper(delay)
+            now = self._clock()
+            if now >= deadline:
+                return False
+            self._next_request_at[origin] = now + self.interval
+            return True
 
 
 def parse_and_validate_media_type(raw_content_type: str | None) -> tuple[bool, str]:
@@ -84,6 +134,21 @@ class SafeCrawler:
             user_agent=self.policy.user_agent,
             fail_closed_on_error=self.policy.fail_closed_on_robots_error,
         )
+        self._origin_pacer = _OriginPacer(self.policy.polite_delay_seconds)
+
+    def _retry_delay(self, retry_number: int, retry_after: str | None = None) -> float:
+        server_delay = parse_retry_after(
+            retry_after, self.policy.max_retry_delay_seconds
+        )
+        if server_delay is not None:
+            return server_delay
+
+        exponent = min(max(0, retry_number - 1), 30)
+        backoff_cap = min(
+            self.policy.max_retry_delay_seconds,
+            self.policy.retry_backoff_base_seconds * (2**exponent),
+        )
+        return random.uniform(backoff_cap * 0.5, backoff_cap)
 
     async def fetch_robots_txt(self, base_url: str, total_deadline: float) -> None:
         """Fetch and parse robots.txt for the site if enabled, within remaining budget."""
@@ -118,6 +183,12 @@ class SafeCrawler:
                     )
                     return
 
+                if not await self._origin_pacer.wait(origin, total_deadline):
+                    self.robots_policy.record_fetch_failure(
+                        origin, "Crawl deadline expired while waiting for origin pacing"
+                    )
+                    return
+                remaining_budget = total_deadline - time.monotonic()
                 timeout_ms = int(min(self.policy.page_timeout_seconds, remaining_budget) * 1000)
                 if timeout_ms <= 0:
                     self.robots_policy.record_fetch_failure(
@@ -292,19 +363,6 @@ class SafeCrawler:
                             })
                             continue
 
-                        # Polite delay (only if budget allows)
-                        if self.policy.polite_delay_seconds > 0:
-                            delay = min(self.policy.polite_delay_seconds, rem_budget)
-                            if delay > 0:
-                                await asyncio.sleep(delay)
-
-                        if time.monotonic() >= total_deadline:
-                            skipped_urls.append({
-                                "url": target_url,
-                                "reason": "Total crawl deadline expired during polite delay",
-                            })
-                            continue
-
                         # Validate against policy before navigating
                         try:
                             norm_url = self.policy.enforce_navigation_policy(
@@ -409,7 +467,6 @@ class SafeCrawler:
             )
             return record, []
 
-        effective_timeout = min(self.policy.page_timeout_seconds, rem_time)
         redirect_count = 0
 
         # Request event listener to record genuine redirects in order
@@ -433,6 +490,11 @@ class SafeCrawler:
                 logger.warning(f"SSRF guard aborted request to {req_url}: {ex}")
                 await route.abort("blockedbyclient")
                 return
+            if not await self._origin_pacer.wait(
+                get_origin(req_url), total_deadline
+            ):
+                await route.abort("timedout")
+                return
 
             # 2. Main-frame navigation requests only:
             if req.is_navigation_request():
@@ -443,7 +505,6 @@ class SafeCrawler:
                         logger.warning(f"Navigation redirect limit ({self.policy.max_redirects}) exceeded for {req_url}")
                         await route.abort("blockedbyclient")
                         return
-
                 # Enforce same-origin and robots.txt on main-frame document navigations
                 try:
                     self.policy.enforce_navigation_policy(
@@ -462,12 +523,66 @@ class SafeCrawler:
         await page.route("**/*", handle_navigation_route)
 
         try:
-            # Enforce page navigation timeout bounded by remaining deadline
-            response = await page.goto(
-                target_url,
-                timeout=int(effective_timeout * 1000),
-                wait_until="domcontentloaded",
-            )
+            retry_number = 0
+            response = None
+            origin = get_origin(target_url)
+            while True:
+                remaining = total_deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError(
+                        "Total crawl deadline expired before page navigation"
+                    )
+                response = await page.goto(
+                    target_url,
+                    timeout=int(min(self.policy.page_timeout_seconds, remaining) * 1000),
+                    wait_until="domcontentloaded",
+                )
+                if response is None or response.status not in RETRYABLE_HTTP_STATUSES:
+                    break
+
+                retry_delay = self._retry_delay(
+                    retry_number + 1,
+                    response.headers.get("retry-after"),
+                )
+                if response.status == 429:
+                    self._origin_pacer.pause(origin, retry_delay)
+
+                # Never retry a challenge or explicit access-denied page, even if its
+                # HTTP status would otherwise be considered transient.
+                try:
+                    challenge_state = classify_access_state(
+                        http_status=None,
+                        rendered_html=await page.content(),
+                        visible_text=await page.inner_text("body"),
+                        final_url=page.url,
+                    )[0]
+                except Exception as ex:
+                    logger.warning(
+                        "Could not inspect transient response from %s; not retrying: %s",
+                        target_url,
+                        ex,
+                    )
+                    break
+                if challenge_state == AccessState.BLOCKED:
+                    break
+
+                if retry_number >= self.policy.max_retries:
+                    break
+                if retry_delay >= total_deadline - time.monotonic():
+                    break
+
+                retry_number += 1
+                if response.status != 429:
+                    self._origin_pacer.pause(origin, retry_delay)
+                logger.info(
+                    "Retrying %s after HTTP %s (retry %d/%d, delay %.3fs)",
+                    target_url,
+                    response.status,
+                    retry_number,
+                    self.policy.max_retries,
+                    retry_delay,
+                )
+
             final_url = page.url
 
             if response:

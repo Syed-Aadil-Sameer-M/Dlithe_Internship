@@ -1,6 +1,8 @@
 """Safe Crawl Policy and boundaries for browser automation."""
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from math import isfinite
 from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
 
@@ -65,6 +67,40 @@ def get_origin(url: str) -> str:
     return f"{scheme}://{netloc}"
 
 
+def parse_retry_after(
+    value: str | None,
+    max_delay_seconds: float,
+    now: datetime | None = None,
+) -> float | None:
+    """Parse Retry-After seconds or HTTP-date, clamped to the configured maximum."""
+    if not value:
+        return None
+
+    value = value.strip()
+    if value.isdecimal():
+        try:
+            seconds = int(value)
+        except ValueError:
+            return None
+        return min(seconds, max_delay_seconds)
+
+    try:
+        retry_at = parsedate_to_datetime(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+    if retry_at.tzinfo is None:
+        retry_at = retry_at.replace(tzinfo=timezone.utc)
+    current_time = now or datetime.now(timezone.utc)
+    if current_time.tzinfo is None:
+        current_time = current_time.replace(tzinfo=timezone.utc)
+
+    delay = (retry_at - current_time).total_seconds()
+    if delay < 0:
+        return None
+    return min(delay, max_delay_seconds)
+
+
 @dataclass(frozen=True)
 class CrawlPolicy:
     """Configurable crawling policy governing boundaries, limits, and polite behavior."""
@@ -74,6 +110,9 @@ class CrawlPolicy:
 
     # Polite delay between page requests (seconds)
     polite_delay_seconds: float = 1.0
+    max_retries: int = 2
+    retry_backoff_base_seconds: float = 1.0
+    max_retry_delay_seconds: float = 30.0
 
     # Navigation timeouts and limits
     page_timeout_seconds: float = 30.0
@@ -95,6 +134,24 @@ class CrawlPolicy:
         """Validate configuration values rejecting negative/invalid limits at construction time."""
         if self.polite_delay_seconds < 0:
             raise ValueError(f"polite_delay_seconds must be non-negative, got {self.polite_delay_seconds}")
+        if self.max_retries < 0:
+            raise ValueError(f"max_retries must be non-negative, got {self.max_retries}")
+        if (
+            not isfinite(self.retry_backoff_base_seconds)
+            or self.retry_backoff_base_seconds < 0
+        ):
+            raise ValueError(
+                "retry_backoff_base_seconds must be finite and non-negative, "
+                f"got {self.retry_backoff_base_seconds}"
+            )
+        if (
+            not isfinite(self.max_retry_delay_seconds)
+            or self.max_retry_delay_seconds < 0
+        ):
+            raise ValueError(
+                "max_retry_delay_seconds must be finite and non-negative, "
+                f"got {self.max_retry_delay_seconds}"
+            )
         if self.page_timeout_seconds <= 0:
             raise ValueError(f"page_timeout_seconds must be positive, got {self.page_timeout_seconds}")
         if self.max_total_duration_seconds <= 0:

@@ -27,3 +27,19 @@ fallbacks. The crawler never reads entered input values, submits forms, or
 accepts/rejects/dismisses consent. The readiness wait and DOM inspection do not
 bypass the crawler's robots, URL-guard, redirect, deadline, or response-size
 policies.
+
+## Browser automation: retries and request pacing
+
+Navigation retries are bounded by `CrawlPolicy.max_retries` (two retries by
+default) and the total crawl deadline. HTTP 408, 429, and selected transient
+server responses (500, 502, 503, and 504) may be retried with jittered
+exponential backoff. A valid `Retry-After` value in seconds or HTTP-date format
+takes precedence; waits are capped by `max_retry_delay_seconds` (30 seconds by
+default). `retry_backoff_base_seconds` defaults to one second. Permanent client
+errors, CAPTCHA/bot challenges, and explicit access denials are not retried.
+
+Requests are paced per normalized origin using `polite_delay_seconds` (one
+second by default). A 429 pauses further requests to that origin for the
+bounded server-provided or backoff delay. Unrelated origins have independent
+pacing state. Robots.txt retrieval is not retried and retains its configured
+fail-closed behavior.

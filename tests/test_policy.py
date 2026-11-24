@@ -206,6 +206,23 @@ Disallow: /admin/
         self.assertEqual(policy.max_response_size_bytes, 1024 * 1024)
         self.assertEqual(policy.max_scroll_attempts, 1)
 
+    def test_retry_configuration_defaults_and_validation(self):
+        defaults = CrawlPolicy()
+        self.assertEqual(defaults.max_retries, 2)
+        self.assertEqual(defaults.retry_backoff_base_seconds, 1.0)
+        self.assertEqual(defaults.max_retry_delay_seconds, 30.0)
+
+        with self.assertRaises(ValueError):
+            CrawlPolicy(max_retries=-1)
+        with self.assertRaises(ValueError):
+            CrawlPolicy(retry_backoff_base_seconds=-0.1)
+        with self.assertRaises(ValueError):
+            CrawlPolicy(retry_backoff_base_seconds=float("inf"))
+        with self.assertRaises(ValueError):
+            CrawlPolicy(max_retry_delay_seconds=-1.0)
+        with self.assertRaises(ValueError):
+            CrawlPolicy(max_retry_delay_seconds=float("nan"))
+
     def test_invalid_policy_configuration_rejected(self):
         """Regression test: verify constructor rejects invalid policy values."""
         with self.assertRaises(ValueError):

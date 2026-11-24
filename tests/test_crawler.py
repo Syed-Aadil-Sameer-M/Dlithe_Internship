@@ -3,11 +3,17 @@ import asyncio
 import http.server
 import threading
 import time
+from datetime import datetime, timedelta, timezone
+from email.utils import format_datetime
 from unittest.mock import AsyncMock, Mock, patch
 from urllib.parse import urlparse
 
-from browser_automation.crawler import SafeCrawler, parse_and_validate_media_type
-from browser_automation.policy import CrawlPolicy
+from browser_automation.crawler import (
+    SafeCrawler,
+    _OriginPacer,
+    parse_and_validate_media_type,
+)
+from browser_automation.policy import CrawlPolicy, parse_retry_after
 from browser_automation.guard import BaseUrlGuard, UrlValidationResult, FailClosedUrlGuard
 from browser_automation.bundle import AccessState, PageType, TriState
 
@@ -27,6 +33,294 @@ class LoopbackTestGuard(BaseUrlGuard):
 
 
 class SafeCrawlerIntegrationTests(unittest.IsolatedAsyncioTestCase):
+
+    async def _crawl_status_sequence(
+        self,
+        statuses,
+        headers=None,
+        bodies=None,
+        policy=None,
+        url="https://example.com/retry-test",
+    ):
+        crawler = SafeCrawler(
+            policy=policy
+            or CrawlPolicy(
+                respect_robots_txt=False,
+                polite_delay_seconds=0.0,
+                post_load_settle_seconds=0.0,
+            ),
+            url_guard=MockTestGuard(),
+        )
+        requests = []
+        pacer = Mock()
+        pacer.wait = AsyncMock(return_value=True)
+        pacer.pause = Mock()
+        crawler._origin_pacer = pacer
+
+        async with crawler.factory:
+            await crawler.factory.create_context()
+            page = await crawler.factory.create_page()
+
+            async def status_handler(route):
+                index = len(requests)
+                requests.append(index)
+                response_headers = headers[index] if headers else {}
+                if callable(response_headers):
+                    response_headers = response_headers()
+                body = bodies[index] if bodies else (
+                    "<html><body><main>Store content is available.</main></body></html>"
+                )
+                await route.fulfill(
+                    status=statuses[min(index, len(statuses) - 1)],
+                    content_type="text/html",
+                    headers=response_headers,
+                    body=body,
+                )
+
+            await page.route("**/retry-test", status_handler)
+            record, _ = await crawler._crawl_single_page(
+                page=page,
+                target_url=url,
+                page_type=PageType.PRODUCT,
+                base_origin="https://example.com",
+                total_deadline=time.monotonic() + 30.0,
+            )
+        return record, requests, pacer
+
+    def test_retry_after_parses_seconds_and_http_dates_safely(self):
+        now = datetime(2026, 11, 24, 12, 0, tzinfo=timezone.utc)
+        retry_date = format_datetime(now + timedelta(seconds=12), usegmt=True)
+
+        self.assertEqual(parse_retry_after("5", 30.0, now), 5.0)
+        self.assertEqual(parse_retry_after(retry_date, 30.0, now), 12.0)
+        self.assertIsNone(parse_retry_after("-2", 30.0, now))
+        self.assertIsNone(parse_retry_after("not-a-date", 30.0, now))
+        self.assertIsNone(
+            parse_retry_after(
+                format_datetime(now - timedelta(seconds=1), usegmt=True),
+                30.0,
+                now,
+            )
+        )
+        self.assertEqual(parse_retry_after("999999", 4.0, now), 4.0)
+
+    async def test_429_retry_after_seconds_and_http_date_are_honored(self):
+        for header, expected, max_delay in (
+            ("2", 2.0, 30.0),
+            (
+                lambda: {
+                    "retry-after": format_datetime(
+                        datetime.now(timezone.utc) + timedelta(seconds=4),
+                        usegmt=True,
+                    )
+                },
+                4.0,
+                30.0,
+            ),
+        ):
+            with self.subTest(retry_after=header):
+                record, requests, pacer = await self._crawl_status_sequence(
+                    [429, 200],
+                    headers=[
+                        header
+                        if callable(header)
+                        else {"retry-after": header},
+                        {},
+                    ],
+                    policy=CrawlPolicy(
+                        respect_robots_txt=False,
+                        polite_delay_seconds=0.0,
+                        post_load_settle_seconds=0.0,
+                        max_retry_delay_seconds=max_delay,
+                    ),
+                )
+                self.assertEqual(len(requests), 2)
+                self.assertEqual(record.access_state, AccessState.ACCESSIBLE)
+                self.assertAlmostEqual(
+                    pacer.pause.call_args.args[1], expected, delta=1.0
+                )
+
+    async def test_invalid_and_large_retry_after_use_bounded_delays(self):
+        with patch("browser_automation.crawler.random.uniform", return_value=0.75):
+            _, requests, pacer = await self._crawl_status_sequence(
+                [429, 200],
+                headers=[{"retry-after": "bad"}, {}],
+            )
+        self.assertEqual(len(requests), 2)
+        self.assertEqual(pacer.pause.call_args.args[1], 0.75)
+
+        _, requests, pacer = await self._crawl_status_sequence(
+            [429, 200],
+            headers=[{"retry-after": "999999"}, {}],
+            policy=CrawlPolicy(
+                respect_robots_txt=False,
+                polite_delay_seconds=0.0,
+                post_load_settle_seconds=0.0,
+                max_retry_delay_seconds=4.0,
+            ),
+        )
+        self.assertEqual(len(requests), 2)
+        self.assertEqual(pacer.pause.call_args.args[1], 4.0)
+
+    async def test_retry_budget_and_transient_statuses(self):
+        policy = CrawlPolicy(
+            respect_robots_txt=False,
+            polite_delay_seconds=0.0,
+            post_load_settle_seconds=0.0,
+            max_retries=2,
+        )
+        with patch("browser_automation.crawler.random.uniform", return_value=0.0):
+            record, requests, _ = await self._crawl_status_sequence(
+                [429], policy=policy
+            )
+        self.assertEqual(len(requests), 3)
+        self.assertEqual(record.http_status, 429)
+        self.assertEqual(record.access_state, AccessState.BLOCKED)
+
+        for status in (408, 503):
+            with self.subTest(status=status):
+                record, requests, _ = await self._crawl_status_sequence(
+                    [status, 200], policy=policy
+                )
+                self.assertEqual(len(requests), 2)
+                self.assertEqual(record.access_state, AccessState.ACCESSIBLE)
+
+    async def test_permanent_errors_and_challenge_are_not_retried(self):
+        for status in (403, 404, 410):
+            with self.subTest(status=status):
+                _, requests, _ = await self._crawl_status_sequence([status, 200])
+                self.assertEqual(len(requests), 1)
+
+        _, requests, _ = await self._crawl_status_sequence(
+            [503, 200],
+            bodies=[
+                "<html><body>Access to this page has been denied</body></html>",
+                "<html><body>Store content</body></html>",
+            ],
+        )
+        self.assertEqual(len(requests), 1)
+
+    async def test_retry_delay_larger_than_deadline_prevents_retry(self):
+        crawler = SafeCrawler(
+            policy=CrawlPolicy(
+                respect_robots_txt=False,
+                polite_delay_seconds=0.0,
+                post_load_settle_seconds=0.0,
+                max_retries=3,
+                max_retry_delay_seconds=60.0,
+            ),
+            url_guard=MockTestGuard(),
+        )
+        crawler._origin_pacer = Mock()
+        crawler._origin_pacer.wait = AsyncMock(return_value=True)
+        crawler._origin_pacer.pause = Mock()
+        requests = []
+
+        async with crawler.factory:
+            await crawler.factory.create_context()
+            page = await crawler.factory.create_page()
+
+            async def rate_limited(route):
+                requests.append(1)
+                await route.fulfill(
+                    status=429,
+                    content_type="text/html",
+                    headers={"retry-after": "60"},
+                    body="<html><body>Too many requests</body></html>",
+                )
+
+            await page.route("**/retry-test", rate_limited)
+            record, _ = await crawler._crawl_single_page(
+                page=page,
+                target_url="https://example.com/retry-test",
+                page_type=PageType.PRODUCT,
+                base_origin="https://example.com",
+                total_deadline=time.monotonic() + 5.0,
+            )
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(record.http_status, 429)
+        self.assertEqual(crawler._origin_pacer.pause.call_args.args[1], 60.0)
+
+    async def test_origin_pacing_isolated_and_deterministic(self):
+        current_time = [0.0]
+        sleeps = []
+
+        async def advance(seconds):
+            sleeps.append(seconds)
+            current_time[0] += seconds
+
+        pacer = _OriginPacer(
+            interval=2.0,
+            clock=lambda: current_time[0],
+            sleeper=advance,
+        )
+        self.assertTrue(await pacer.wait("https://one.example", 20.0))
+        self.assertTrue(await pacer.wait("https://two.example", 20.0))
+        self.assertEqual(sleeps, [])
+        self.assertTrue(await pacer.wait("https://one.example", 20.0))
+        self.assertEqual(sleeps, [2.0])
+
+        pacer.pause("https://one.example", 5.0)
+        self.assertTrue(await pacer.wait("https://one.example", 20.0))
+        self.assertEqual(sleeps, [2.0, 5.0])
+
+    async def test_successful_records_survive_another_page_retry_exhaustion(self):
+        crawler = SafeCrawler(
+            policy=CrawlPolicy(
+                respect_robots_txt=False,
+                polite_delay_seconds=0.0,
+                post_load_settle_seconds=0.0,
+                max_pages=3,
+                max_retries=1,
+            ),
+            url_guard=MockTestGuard(),
+        )
+        counts = {}
+
+        async def store_handler(route):
+            path = urlparse(route.request.url).path
+            counts[path] = counts.get(path, 0) + 1
+            if path == "/":
+                body = (
+                    '<html><body><main>Store homepage content</main>'
+                    '<a href="/about">About</a><a href="/contact">Contact</a>'
+                    "</body></html>"
+                )
+                await route.fulfill(status=200, content_type="text/html", body=body)
+            elif path == "/contact":
+                await route.fulfill(
+                    status=429,
+                    content_type="text/html",
+                    headers={"retry-after": "0"},
+                    body="<html><body>Too many requests</body></html>",
+                )
+            else:
+                await route.fulfill(
+                    status=200,
+                    content_type="text/html",
+                    body="<html><body><main>Store page content</main></body></html>",
+                )
+
+        create_page = crawler.factory.create_page
+
+        async def create_routed_page():
+            page = await create_page()
+            await page.route("https://example.com/*", store_handler)
+            return page
+
+        crawler._retry_delay = Mock(return_value=0.0)
+        with patch.object(crawler.factory, "create_page", side_effect=create_routed_page):
+            bundle = await crawler.crawl_site("https://example.com")
+
+        self.assertEqual(len(bundle.records), 3)
+        self.assertTrue(
+            any(record.access_state == AccessState.ACCESSIBLE for record in bundle.records)
+        )
+        contact = next(
+            record for record in bundle.records if urlparse(record.source_url).path == "/contact"
+        )
+        self.assertEqual(contact.access_state, AccessState.BLOCKED)
+        self.assertEqual(counts["/contact"], 2)
 
     def test_strict_content_type_parsing(self):
         """Regression test: verify strict media type validation."""
